@@ -13,6 +13,7 @@ namespace cascade {
  * META
  */
 using ServiceClientAPI = ServiceClient<VolatileCascadeMetadataWithStringKey, VolatileCascadeStoreWithStringKey, PersistentCascadeStoreWithStringKey>;
+// using ServiceClientAPI = ServiceClient<VolatileCascadeStoreWithStringKey, PersistentCascadeStoreWithStringKey>;
 
 
 /**

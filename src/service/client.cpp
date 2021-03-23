@@ -122,9 +122,9 @@ static void print_red(std::string msg) {
                   << ",ts_us:" << std::get<1>(reply) << std::endl;\
     }
 
-void get_object_pool_info(ServiceClientAPI& capi, std::string& key) {
+void find_object_pool(ServiceClientAPI& capi, std::string& key) {
     ObjectPoolMetadata result = capi.find_object_pool(key);
-    std::cout<<result<<std::endl;
+    std::cout<<result.to_string()<<std::endl;
 }
 
 template <typename SubgroupType>
@@ -352,7 +352,7 @@ void interactive_test(ServiceClientAPI& capi) {
     // "list_subgroup_members [subgroup_id(0)] [shard_index(0)]\n\tlist members in shard by subgroup id.\n"
     "set_member_selection_policy <type> <subgroup_index> <shard_index> <policy> [user_specified_node_id]\n\tset member selection policy\n"
     "get_member_selection_policy <type> [subgroup_index(0)] [shard_index(0)]\n\tget member selection policy\n"
-    "get_object_pool_info <key>"
+    "find_object_pool <key>"
     "put <type> <key> <value> [pver(-1)] [pver_by_key(-1)] [subgroup_index(0)] [shard_index(0)]\n\tput an object\n"
     "remove <type> <key> [subgroup_index(0)] [shard_index(0)]\n\tremove an object\n"
     "get <type> <key> [version(-1)] [subgroup_index(0)] [shard_index(0)]\n\tget an object(by version)\n"
@@ -449,13 +449,13 @@ void interactive_test(ServiceClientAPI& capi) {
                 user_specified_node_id = static_cast<node_id_t>(std::stoi(cmd_tokens[5]));
             }
             on_subgroup_type(cmd_tokens[1],set_member_selection_policy,capi,subgroup_index,shard_index,policy,user_specified_node_id);
-        }else if (cmd_tokens[0] == "get_object_pool_info") {
-            if (cmd_tokens.size() < 1) {
-                print_red("Invalid format:" + cmdline);
-                continue;
-            }
-            on_subgroup_type(cmd_tokens[1],get,capi,cmd_tokens[2],version,subgroup_index,shard_index);
-        } else if (cmd_tokens[0] == "put") {
+        }else if (cmd_tokens[0] == "find_object_pool") {
+             if (cmd_tokens.size() < 1) {
+                 print_red("Invalid format:" + cmdline);
+                 continue;
+             }
+             find_object_pool(capi, cmd_tokens[1]);
+        }else if (cmd_tokens[0] == "put") {
             persistent::version_t pver = persistent::INVALID_VERSION;
             persistent::version_t pver_bk = persistent::INVALID_VERSION;
             if (cmd_tokens.size() < 4) {
@@ -628,7 +628,7 @@ void interactive_test(ServiceClientAPI& capi) {
 int main(int argc,char** argv) {
     std::cout << "This is a Service Client Example." << std::endl;
 
-    ServiceClientAPI capi;
+    ServiceClientAPI capi(true);
     // TEST 0 META
     if(argc>=2 && strcmp(argv[1],"create") == 0 ){
         uint32_t subgroup_index = 0;

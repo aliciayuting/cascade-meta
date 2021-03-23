@@ -50,7 +50,15 @@ policy:=FirstMember|LastMember|Random|FixedRandom|RoundRobin|UserSpecified\n\
 
         if(sl[0] == "quit" or sl[0] == "exit"):
             break
-        
+
+        if(sl[0] == 'find_object_pool'):
+            print("Find object pool ", a.find_object_pool(sl[1]))
+            continue
+
+        if(sl[0] == 'create_object_pool'):
+            a.create_object_pool(sl[1],sl[2],sl[3])
+            continue
+
         if(sl[0] == 'list_all_members'):
             print("Top Derecho Group members = ", a.get_members())
             continue

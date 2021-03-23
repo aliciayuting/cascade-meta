@@ -254,7 +254,6 @@ std::enable_if_t<std::disjunction<std::is_same<ObjectWithStringKey,VT>,std::is_s
 }
 **/
 
-
 // META
 class ObjectPoolMetadata :  public mutils::ByteRepresentable,
                             public ICascadeObject<std::string>,
@@ -326,6 +325,11 @@ public:
     // IK and IV for volatile cascade store
     static std::string IK;
     static ObjectPoolMetadata IV;
+
+    std::string to_string() {
+        std::string res = "ObjectMetadataWithStringKey{ver: "+ object_pool_id + ", subgroup type" + subgroup_type +", subgroup index: " + std::to_string(subgroup_index) + "}";
+        return res;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& out, const ObjectPoolMetadata& o) {
@@ -335,6 +339,8 @@ inline std::ostream& operator<<(std::ostream& out, const ObjectPoolMetadata& o) 
         << ", subgroup index: " << std::to_string(o.subgroup_index) << "}";
     return out;
 }
+
+
 
 } // namespace cascade
 } // namespace derecho

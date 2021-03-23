@@ -43,6 +43,15 @@ std::function<py::bytes(ObjectWithStringKey)> s_f = [](ObjectWithStringKey obj) 
     };
 
 /**
+    Lambda function for handling the unwrapping of ObjectWithStringKey
+*/
+std::function<py::bytes(ObjectPoolMetadata)> m_f = [](ObjectPoolMetadata obj) {
+        std::string s(to_string(&obj));
+        return py::bytes(s);   
+
+    };
+
+/**
     Lambda function for handling the unwrapping of ObjectWithUInt64Key
 */
 std::function<py::bytes(ObjectWithUInt64Key)> u_f = [](ObjectWithUInt64Key obj) {
@@ -274,6 +283,16 @@ PYBIND11_MODULE(cascade_py,m)
            return capi.get_shard_members(subgroup_index, shard_index);
 	   }, "Get all members in the current derecho subgroup and shard.")
       */
+      .def("find_object_pool",[](ServiceClientAPI &capi, std::string object_pool_id){
+            ObjectPoolMetadata result = capi.find_object_pool(object_pool_id);
+            return py::cast(result.to_string());
+        })
+      .def("create_object_pool",[](ServiceClientAPI &capi, std::string object_pool_id,std::string subgroup_type, std::string subgroup_index){
+            // TODO: return the query result of create_obj_pool
+            uint32_t s_index = static_cast<uint32_t>(std::stoi(subgroup_index));
+            auto result = capi.create_object_pool(object_pool_id,subgroup_type, s_index);
+            return py::cast(NULL);
+        })
 	  .def("get_shard_members", [](ServiceClientAPI &capi, std::string service_type,  uint32_t subgroup_index, uint32_t shard_index){
 		std::vector<node_id_t> members;
            on_subgroup_type(service_type, members = capi.template get_shard_members, subgroup_index, shard_index);

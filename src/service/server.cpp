@@ -34,7 +34,7 @@ class CascadeServiceCDPO: public CriticalDataPathObserver<CascadeType> {
                              const typename CascadeType::ObjectType& value,
                              ICascadeContext* cascade_ctxt) {
         if constexpr (std::is_convertible<typename CascadeType::KeyType,std::string>::value) {
-            auto* ctxt = dynamic_cast<CascadeContext<VolatileCascadeStoreWithStringKey,PersistentCascadeStoreWithStringKey>*>(cascade_ctxt);
+            auto* ctxt = dynamic_cast<CascadeContext<VolatileCascadeMetadataWithStringKey, VolatileCascadeStoreWithStringKey,PersistentCascadeStoreWithStringKey>*>(cascade_ctxt);
             size_t pos = key.rfind('/');
             std::string prefix;
             if (pos != std::string::npos) {
@@ -89,9 +89,11 @@ int main(int argc, char** argv) {
     std::cout << "Press Enter to Shutdown." << std::endl;
     std::cin.get();
     // wait for service to quit.
+
     Service<VolatileCascadeMetadataWithStringKey,VolatileCascadeStoreWithStringKey,PersistentCascadeStoreWithStringKey>::shutdown(false);
     dbg_default_trace("shutdown service gracefully");
     // you can do something here to parallel the destructing process.
+
     Service<VolatileCascadeMetadataWithStringKey,VolatileCascadeStoreWithStringKey,PersistentCascadeStoreWithStringKey>::wait();
     dbg_default_trace("Finish shutdown.");
 

@@ -370,19 +370,17 @@ void ServiceClient<CascadeTypes...>::refresh_object_pool_meta_cache(){
         auto reply = reply_future.second.get();
         for (auto& key:reply) {
             std::cout<<key<<std::endl;
-            std::string object_pool_id = static_cast<const std::string&> (key); 
-            derecho::rpc::QueryResults<ObjectPoolMetadata> meta_result;
-            if (group_ptr != nullptr) {
-                meta_result = group_ptr->VolatileCascadeMetadataWithStringKey::get(object_pool_id, ver, 0, 0);
-            }else{
-                meta_result = external_group_ptr->VolatileCascadeMetadataWithStringKey::get(object_pool_id, ver, 0, 0);
-            }
+            std::string object_pool_id = static_cast<const std::string> (key); 
+            auto meta_result = this->get<VolatileCascadeMetadataWithStringKey>(object_pool_id, ver, 0, 0);
             for (auto& meta_reply_future:meta_result.get()) {
                 auto temp = meta_reply_future.second.get();
-                ObjectPoolMetadata * meta_reply = (ObjectPoolMetadata *) &temp; 
+                ObjectPoolMetadata meta_reply = std::move(temp); 
                 std::unique_lock wlck(this->object_pool_info_cache_mutex);
-                print_r("          object_pool_id: " + object_pool_id + ", metadata: (" + meta_reply->subgroup_type + ", "+ std::to_string(meta_reply->subgroup_index) + ")");
-                object_pool_info_cache[object_pool_id] = *meta_reply;
+                print_r("          object_pool_id: " + object_pool_id + ", metadata: (" + meta_reply.subgroup_type + ", "+ std::to_string(meta_reply.subgroup_index) + ")");
+                object_pool_info_cache[object_pool_id] = meta_reply;
+
+
+
             }
         }
     }
@@ -403,6 +401,7 @@ derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> ServiceCl
         object_pool_info_cache[obj_pool_id] = obj_meta;
         wlck.unlock();
     } else {
+        rlck.unlock();
         std::unique_lock wlck(this->object_pool_info_cache_mutex);
         auto it = object_pool_info_cache.find(obj_pool_id);
         it->second = obj_meta;     
@@ -443,12 +442,14 @@ ObjectPoolMetadata ServiceClient<CascadeTypes...>::find_object_pool( std::string
         // }
         for (auto& reply_future:result.get()) {
             auto temp = reply_future.second.get();
+            print_r(static_cast<ObjectPoolMetadata>(temp).to_string());
             ObjectPoolMetadata * reply = (ObjectPoolMetadata *) &temp;  
             std::unique_lock wlck(this->object_pool_info_cache_mutex);
             print_r("          object_pool_id: " + object_pool_id + ", metadata: (" + reply->subgroup_type + ", "+ std::to_string(reply->subgroup_index)+ ")");
             object_pool_info_cache[object_pool_id] = *reply;
             return *reply;
         }
+        return ObjectPoolMetadata();
     }
 }
 
