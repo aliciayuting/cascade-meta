@@ -376,11 +376,10 @@ ObjectWithStringKey create_null_object_cb<std::string,ObjectWithStringKey,&Objec
 
 
 // META
-/*
 bool ObjectPoolMetadata::operator==(const ObjectPoolMetadata& other) {
-    return (this->objectpool_id == other.key) && (this->version == other.version);
+    return (this->object_pool_id == other.object_pool_id) && (this->version == other.version);
 }
-*/
+
 
 void ObjectPoolMetadata::operator=(const ObjectPoolMetadata& other) {
     this->object_pool_id = other.object_pool_id;
@@ -473,7 +472,10 @@ ObjectPoolMetadata::ObjectPoolMetadata() :
     timestamp_us(0),
     previous_version(INVALID_VERSION),
     previous_version_by_key(INVALID_VERSION),
-    object_pool_id() {}
+    object_pool_id(""),
+    subgroup_type(""),
+    subgroup_index(0),
+    sharding_policy_index(0) {}
 
 const std::string& ObjectPoolMetadata::get_key_ref() const {
     return this->object_pool_id;

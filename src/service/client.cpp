@@ -632,10 +632,9 @@ int main(int argc,char** argv) {
     // TEST 0 META
     if(argc>=2 && strcmp(argv[1],"create") == 0 ){
         uint32_t subgroup_index = 0;
-        std::string o_p_id = "farm/cows/photo";
+        std::string o_p_id = "farm";
         std::string subgroup_type = "VCSS";
-        derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> result = capi.create_object_pool(
-            o_p_id, subgroup_type,subgroup_index);
+        derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> result = capi.create_object_pool(o_p_id, subgroup_type,subgroup_index);
     }
 
     // TEST 1 

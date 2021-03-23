@@ -271,7 +271,7 @@ public:
     mutable std::unordered_map<std::string,
                             uint32_t>                   objects_locations;       // the list of shards where it contains the objects
 
-    // bool operator==(const ObjectPoolMetadata& other);
+    bool operator==(const ObjectPoolMetadata& other);
     void operator=(const ObjectPoolMetadata& other);
 
     // constructor 0 : copy constructor
@@ -304,7 +304,7 @@ public:
     // constructor 4 : default invalid constructor
     ObjectPoolMetadata();
 
-
+    
     virtual const std::string& get_key_ref() const override;
     virtual bool is_null() const override;
     virtual bool is_valid() const override;
@@ -326,8 +326,10 @@ public:
     static std::string IK;
     static ObjectPoolMetadata IV;
 
+    
+
     std::string to_string() {
-        std::string res = "ObjectMetadataWithStringKey{ver: "+ object_pool_id + ", subgroup type" + subgroup_type +", subgroup index: " + std::to_string(subgroup_index) + "}";
+        std::string res = "OPMS{pool_id:"+ object_pool_id + ", subgroup type:" + subgroup_type +", subgroup index: " + std::to_string(subgroup_index) + "}";
         return res;
     }
 };

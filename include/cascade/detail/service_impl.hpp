@@ -364,7 +364,6 @@ void ServiceClient<CascadeTypes...>::refresh_object_pool_meta_cache(){
     persistent::version_t ver = persistent::INVALID_VERSION;
     derecho::rpc::QueryResults<std::vector<std::string>> keys_result = this->list_keys<VolatileCascadeMetadataWithStringKey>
                                                                                 (ver,subgroup_index,shard_index);    
-    
     for(auto& reply_future:keys_result.get()) {
         print_r("[updating] local cache object pool metadata  ...");
         auto reply = reply_future.second.get();
@@ -378,9 +377,6 @@ void ServiceClient<CascadeTypes...>::refresh_object_pool_meta_cache(){
                 std::unique_lock wlck(this->object_pool_info_cache_mutex);
                 print_r("          object_pool_id: " + object_pool_id + ", metadata: (" + meta_reply.subgroup_type + ", "+ std::to_string(meta_reply.subgroup_index) + ")");
                 object_pool_info_cache[object_pool_id] = meta_reply;
-
-
-
             }
         }
     }
@@ -394,20 +390,18 @@ derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> ServiceCl
     print_r("[CREATING] object pool metadata info : (object_pool_id: " + obj_pool_id + ", subgroup_type: "+obj_subgroup_type \
                 + ", subgroup_index: "+std::to_string(obj_subgroup_index) + ")");
     ObjectPoolMetadata obj_meta(obj_pool_id, obj_subgroup_type, obj_subgroup_index);
-    std::shared_lock rlck(this->object_pool_info_cache_mutex);
-    if (object_pool_info_cache.find( obj_pool_id ) == object_pool_info_cache.end()) {
-        rlck.unlock();
-        std::unique_lock wlck(this->object_pool_info_cache_mutex);
-        object_pool_info_cache[obj_pool_id] = obj_meta;
-        wlck.unlock();
-    } else {
-        rlck.unlock();
-        std::unique_lock wlck(this->object_pool_info_cache_mutex);
-        auto it = object_pool_info_cache.find(obj_pool_id);
-        it->second = obj_meta;     
-        wlck.unlock();
-    }
+    // std::shared_lock rlck(this->object_pool_info_cache_mutex);
+    // if (object_pool_info_cache.find( obj_pool_id ) != object_pool_info_cache.end()) {
+    //     ObjectPoolMetadata prev_meta = object_pool_info_cache.find(obj_pool_id);
+    //     if(prev_meta==obj_meta)
+    //         return caller.template p2p_send<RPC_NAME(put)>(node_id,value);;
+    // } 
+    // rlck.unlock();
+    std::unique_lock wlck(this->object_pool_info_cache_mutex);
+    object_pool_info_cache[obj_pool_id] = obj_meta;
+    wlck.unlock();
     print_r("about to put");
+    print_r(obj_meta.to_string());
     return this->put<VolatileCascadeMetadataWithStringKey>(obj_meta, meta_subgroup_index, meta_shard_index);
 }
 
@@ -421,7 +415,6 @@ derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> ServiceCl
         rlck.unlock();
         std::unique_lock wlck(this->object_pool_info_cache_mutex);
         object_pool_info_cache.erase (object_pool_id);
-        wlck.unlock();
     } 
     return this->remove<VolatileCascadeMetadataWithStringKey>(object_pool_id, meta_subgroup_index, meta_shard_index);
 }
