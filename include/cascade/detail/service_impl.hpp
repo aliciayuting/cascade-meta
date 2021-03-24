@@ -505,17 +505,14 @@ derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> ServiceCl
         uint32_t shard_index) {
     if (group_ptr != nullptr) {
         // META fist check if this object pool has been herer before
-        print_r("group_ptr != null");
         
         std::lock_guard(this->group_ptr_mutex);
         if (static_cast<uint32_t>(group_ptr->template get_my_shard<SubgroupType>(subgroup_index)) == shard_index) {
             // do ordered put as a member (Replicated).
-            print_r("replicated");
             auto& subgroup_handle = group_ptr->template get_subgroup<SubgroupType>(subgroup_index);
             return subgroup_handle.template ordered_send<RPC_NAME(ordered_put)>(value);
         } else {
             // do normal put as a non member (ExternalCaller).
-            print_r("external caller");
             auto& subgroup_handle = group_ptr->template get_nonmember_subgroup<SubgroupType>(subgroup_index);
             // object put location META
             node_id_t node_id = pick_member_by_policy<SubgroupType>(subgroup_index,shard_index);

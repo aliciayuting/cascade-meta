@@ -473,7 +473,7 @@ namespace cascade {
         // METATODO: Add description
         template <typename SubgroupType>
         derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> triggerPut(const typename SubgroupType::ObjectType& object,
-                uint32_t subgroup_index=0, uint32_t shard_index=0, bool use_scheduler=false);
+                uint32_t subgroup_index=0, uint32_t shard_index=0, bool use_scheduler=true);
 
 
         /**

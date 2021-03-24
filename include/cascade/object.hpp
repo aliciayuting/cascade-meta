@@ -87,6 +87,8 @@ public:
     mutable persistent::version_t                       previous_version_by_key; // previous version by key, INVALID_VERSION for the first value of the key.
     uint64_t                                            key; // object_id
     Blob                                                blob; // the object
+    mutable std::unordered_map<std::string,
+                        std::vector<std::string>>       dag;            // the DAG structure of the tasks prefix
 
     // bool operator==(const ObjectWithUInt64Key& other);
 
@@ -180,6 +182,8 @@ public:
     mutable persistent::version_t                       previous_version_by_key; // previous version by key, INVALID_VERSION for the first value of the key.
     std::string                                         key;                     // object_id
     Blob                                                blob;                    // the object data
+    mutable std::unordered_map<std::string,
+                        std::vector<std::string>>       dag;                    // the DAG structure of the job's prefix
 
     // bool operator==(const ObjectWithStringKey& other);
 
@@ -255,12 +259,6 @@ std::enable_if_t<std::disjunction<std::is_same<ObjectWithStringKey,VT>,std::is_s
 **/
 
 // META
-
-// class DAG:public mutils::ByteRepresentable,
-//                             public ICascadeObject<std::string>,
-//                             public IKeepTimestamp,
-//                             public IVerifyPreviousVersion {
-// }
 class ObjectPoolMetadata :  public mutils::ByteRepresentable,
                             public ICascadeObject<std::string>,
                             public IKeepTimestamp,
@@ -271,7 +269,6 @@ public:
     mutable std::string                                 object_pool_id;          // the identifier of the object pool
     mutable std::string                                 subgroup_type;           // the subgroup type of the object pool
     mutable uint32_t                                    subgroup_index;          // the subgroup index of the object pool
-    // TODO: servicce.hpp shardSelectionPolicy enum
     mutable int                                         sharding_policy_index;   // index of shard member selection policy, default 0 
     mutable std::unordered_map<std::string,
                             uint32_t>                   objects_locations;       // the list of shards where it contains the objects
@@ -319,10 +316,6 @@ public:
     virtual uint64_t get_timestamp() const override;
     virtual void set_previous_version(persistent::version_t prev_ver, persistent::version_t perv_ver_by_key) const override;
     virtual bool verify_previous_version(persistent::version_t prev_ver, persistent::version_t perv_ver_by_key) const override;
-    // virtual void set_objects_location(const std::unordered_map<std::string,uint32_t>&  _objects_locations);
-    // virtual const std::string& get_subgroup_type();
-    // virtual const uint32_t get_subgroup_index();
-    // virtual const std::unordered_map<std::string,uint32_t> get_objects_location();
 
     DEFAULT_SERIALIZATION_SUPPORT(ObjectPoolMetadata, version, timestamp_us, 
                                     object_pool_id, subgroup_type, subgroup_index, sharding_policy_index,objects_locations);

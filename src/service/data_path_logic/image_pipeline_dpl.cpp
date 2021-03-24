@@ -1,7 +1,6 @@
 #include <cascade/data_path_logic_interface.hpp>
 #include <iostream>
 #include <cascade/config.h>
-#include <cascade/service_server_api.hpp>
 #include <mxnet-cpp/MxNetCpp.h>
 #include <vector>
 #include <sys/socket.h>
