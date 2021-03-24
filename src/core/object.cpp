@@ -384,9 +384,7 @@ bool ObjectPoolMetadata::operator==(const ObjectPoolMetadata& other) {
 void ObjectPoolMetadata::operator=(const ObjectPoolMetadata& other) {
     this->object_pool_id = other.object_pool_id;
     this->version = other.version;
-    this->timestamp_us = other.timestamp_us;
-    this->previous_version = other.previous_version;
-    this->previous_version_by_key = other.previous_version_by_key; 
+    this->timestamp_us = other.timestamp_us; 
     this->subgroup_type = other.subgroup_type;
     this->sharding_policy_index = other.sharding_policy_index;
     this->objects_locations = other.objects_locations;
@@ -402,8 +400,6 @@ ObjectPoolMetadata::ObjectPoolMetadata(const std::string& _object_pool_id,
                     const std::string& _subgroup_type, const uint32_t _subgroup_index):
     version(persistent::INVALID_VERSION),
     timestamp_us(0),
-    previous_version(INVALID_VERSION),
-    previous_version_by_key(INVALID_VERSION),
     subgroup_type(_subgroup_type),
     subgroup_index(_subgroup_index),
     sharding_policy_index(0) {}
@@ -411,8 +407,6 @@ ObjectPoolMetadata::ObjectPoolMetadata(const std::string& _object_pool_id,
 // constructor 0.5 : copy constructor
 ObjectPoolMetadata::ObjectPoolMetadata(const persistent::version_t _version,
                         const uint64_t _timestamp_us,
-                        const persistent::version_t _previous_version,
-                        const persistent::version_t _previous_version_by_key,
                         const std::string& _object_pool_id, 
                         const std::string& _subgroup_type,
                         const uint32_t _subgroup_index,
@@ -420,8 +414,6 @@ ObjectPoolMetadata::ObjectPoolMetadata(const persistent::version_t _version,
                         const std::unordered_map<std::string,uint32_t>&  _objects_locations):
     version(_version),
     timestamp_us(_timestamp_us),
-    previous_version(_previous_version),
-    previous_version_by_key(_previous_version_by_key),
     object_pool_id(_object_pool_id), 
     subgroup_type(_subgroup_type),
     subgroup_index(_subgroup_index),
@@ -435,8 +427,6 @@ ObjectPoolMetadata::ObjectPoolMetadata(const std::string& _object_pool_id,
                                 const int _sharding_policy_index): 
     version(persistent::INVALID_VERSION),
     timestamp_us(0),
-    previous_version(INVALID_VERSION),
-    previous_version_by_key(INVALID_VERSION),
     object_pool_id(_object_pool_id),
     subgroup_type(_subgroup_type),
     subgroup_index(_subgroup_index),
@@ -446,8 +436,6 @@ ObjectPoolMetadata::ObjectPoolMetadata(const std::string& _object_pool_id,
 ObjectPoolMetadata::ObjectPoolMetadata(ObjectPoolMetadata&& other) : 
     version(other.version),
     timestamp_us(other.timestamp_us),
-    previous_version(other.previous_version),
-    previous_version_by_key(other.previous_version_by_key),
     object_pool_id(other.object_pool_id),
     subgroup_type(other.subgroup_type),
     subgroup_index(other.subgroup_index),
@@ -458,8 +446,6 @@ ObjectPoolMetadata::ObjectPoolMetadata(ObjectPoolMetadata&& other) :
 ObjectPoolMetadata::ObjectPoolMetadata(const ObjectPoolMetadata& other) : 
     version(other.version),
     timestamp_us(other.timestamp_us),
-    previous_version(other.previous_version),
-    previous_version_by_key(other.previous_version_by_key),
     object_pool_id(other.object_pool_id),
     subgroup_type(other.subgroup_type),
     subgroup_index(other.subgroup_index),
@@ -470,8 +456,6 @@ ObjectPoolMetadata::ObjectPoolMetadata(const ObjectPoolMetadata& other) :
 ObjectPoolMetadata::ObjectPoolMetadata() : 
     version(persistent::INVALID_VERSION),
     timestamp_us(0),
-    previous_version(INVALID_VERSION),
-    previous_version_by_key(INVALID_VERSION),
     object_pool_id(""),
     subgroup_type(""),
     subgroup_index(0),
@@ -502,8 +486,6 @@ uint64_t ObjectPoolMetadata::get_timestamp() const {
 }
 
 void ObjectPoolMetadata::set_previous_version(persistent::version_t prev_ver, persistent::version_t prev_ver_by_key) const {
-    this->previous_version = prev_ver;
-    this->previous_version_by_key = prev_ver_by_key;
 }
 
 bool ObjectPoolMetadata::verify_previous_version(persistent::version_t prev_ver, persistent::version_t prev_ver_by_key) const {
@@ -512,8 +494,7 @@ bool ObjectPoolMetadata::verify_previous_version(persistent::version_t prev_ver,
     // it. The default behavior is self-explanatory and can be disabled by setting corresponding object previous versions to
     // INVALID_VERSION.
 
-    return ((this->previous_version == persistent::INVALID_VERSION)?true:(this->previous_version >= prev_ver)) &&
-           ((this->previous_version_by_key == persistent::INVALID_VERSION)?true:(this->previous_version_by_key >= prev_ver_by_key));
+    return true;
 }
 
 

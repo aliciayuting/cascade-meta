@@ -141,7 +141,7 @@ void put(ServiceClientAPI& capi, std::string& key, std::string& value, persisten
     obj.previous_version = pver;
     obj.previous_version_by_key = pver_bk;
     obj.blob = Blob(value.c_str(),value.length());
-    derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> result = capi.template put<SubgroupType>(obj, subgroup_index, shard_index);
+    derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> result = capi.template triggerPut<SubgroupType>(obj, subgroup_index, shard_index,true);
     check_put_and_remove_result(result);
 }
 

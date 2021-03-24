@@ -255,6 +255,12 @@ std::enable_if_t<std::disjunction<std::is_same<ObjectWithStringKey,VT>,std::is_s
 **/
 
 // META
+
+// class DAG:public mutils::ByteRepresentable,
+//                             public ICascadeObject<std::string>,
+//                             public IKeepTimestamp,
+//                             public IVerifyPreviousVersion {
+// }
 class ObjectPoolMetadata :  public mutils::ByteRepresentable,
                             public ICascadeObject<std::string>,
                             public IKeepTimestamp,
@@ -262,15 +268,16 @@ class ObjectPoolMetadata :  public mutils::ByteRepresentable,
 public:
     mutable persistent::version_t                       version;                // object version
     mutable uint64_t                                    timestamp_us;           // timestamp in microsecond
-    mutable persistent::version_t                       previous_version;       // previous version, INVALID_VERSION for the first version.
-    mutable persistent::version_t                       previous_version_by_key; // previous version by key, INVALID_VERSION for the first value of the key.
     mutable std::string                                 object_pool_id;          // the identifier of the object pool
     mutable std::string                                 subgroup_type;           // the subgroup type of the object pool
     mutable uint32_t                                    subgroup_index;          // the subgroup index of the object pool
+    // TODO: servicce.hpp shardSelectionPolicy enum
     mutable int                                         sharding_policy_index;   // index of shard member selection policy, default 0 
     mutable std::unordered_map<std::string,
                             uint32_t>                   objects_locations;       // the list of shards where it contains the objects
 
+
+// farm1/photo2
     bool operator==(const ObjectPoolMetadata& other);
     void operator=(const ObjectPoolMetadata& other);
 
@@ -281,8 +288,6 @@ public:
     // constructor 0.5 : copy constructor
     ObjectPoolMetadata(const persistent::version_t _version,
                         const uint64_t _timestamp_us,
-                        const persistent::version_t _previous_version,
-                        const persistent::version_t _previous_version_by_key,
                         const std::string& _object_pool_id, 
                         const std::string& _subgroup_type,
                         const uint32_t _subgroup_index,
@@ -319,7 +324,7 @@ public:
     // virtual const uint32_t get_subgroup_index();
     // virtual const std::unordered_map<std::string,uint32_t> get_objects_location();
 
-    DEFAULT_SERIALIZATION_SUPPORT(ObjectPoolMetadata, version, timestamp_us, previous_version, previous_version_by_key, 
+    DEFAULT_SERIALIZATION_SUPPORT(ObjectPoolMetadata, version, timestamp_us, 
                                     object_pool_id, subgroup_type, subgroup_index, sharding_policy_index,objects_locations);
 
     // IK and IV for volatile cascade store
@@ -329,7 +334,8 @@ public:
     
 
     std::string to_string() {
-        std::string res = "OPMS{pool_id:"+ object_pool_id + ", subgroup type:" + subgroup_type +", subgroup index: " + std::to_string(subgroup_index) + "}";
+        std::string res = "OPMS{pool_id:"+ object_pool_id + ", subgroup type:" + subgroup_type +", subgroup index: " + std::to_string(subgroup_index) + 
+        ", sharding policy"+ std::to_string(sharding_policy_index) + "}";
         return res;
     }
 };

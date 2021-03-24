@@ -12,6 +12,26 @@ target_include_directories(console_printer_dpl PRIVATE
     $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
 )
 
+if (HAS_MXNET_CPP AND OPENCV_CORE_FOUND)
+   add_library(image_pipeline_dpl SHARED image_pipeline_dpl.cpp)
+    target_include_directories(image_pipeline_dpl PRIVATE
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
+        $<BUILD_INTERFACE:${OpenCV_INCLUDE_DIRS}>
+    )
+    target_link_libraries(image_pipeline_dpl mxnet cascade)
+
+    add_custom_command(TARGET image_pipeline_dpl POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/download_cnn_classifier_models.sh
+        ${CMAKE_CURRENT_BINARY_DIR}/download_cnn_classifier_models.sh
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/video_receive.py
+        ${CMAKE_CURRENT_BINARY_DIR}/video_receive.py
+    )
+endif()
+
+
 ##TODO: enable cnn_classifier dpl after data path logic manager is finished.
 ##if (HAS_MXNET_CPP AND OPENCV_CORE_FOUND)
 ##    add_library(cnn_classifier_dpl SHARED cnn_classifier_dpl.cpp)

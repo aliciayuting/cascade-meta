@@ -304,6 +304,31 @@ void ServiceClient<CascadeTypes...>::refresh_member_cache_entry(uint32_t subgrou
 
 template <typename... CascadeTypes>
 template <typename SubgroupType>
+uint32_t ServiceClient<CascadeTypes...>::pick_shard(const typename SubgroupType::ObjectType& value,int policy,
+                                                    uint32_t subgroup_index) {
+
+    uint32_t shard_index = 0;
+    uint32_t total_num_shards = get_number_of_shards<SubgroupType>(subgroup_index);
+    switch(policy) {
+    // first shard
+    case 0:
+        break;
+    // pick last shard
+    case 1:
+        shard_index = total_num_shards - 1;
+        break;
+    case 2:
+        shard_index = get_time()%total_num_shards; // use time as random source.
+        break;
+    default:
+        throw new derecho::derecho_exception("Unknown member selection policy:" + std::to_string(static_cast<unsigned int>(policy)) );
+    }
+
+    return shard_index;
+}
+
+template <typename... CascadeTypes>
+template <typename SubgroupType>
 node_id_t ServiceClient<CascadeTypes...>::pick_member_by_policy(uint32_t subgroup_index,
                                                                 uint32_t shard_index,
                                                                 bool retry) {
@@ -385,11 +410,11 @@ void ServiceClient<CascadeTypes...>::refresh_object_pool_meta_cache(){
 template <typename... CascadeTypes>
 derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> ServiceClient<CascadeTypes...>::create_object_pool( 
                                         std::string& obj_pool_id,
-                                        std::string& obj_subgroup_type,uint32_t obj_subgroup_index){
+                                        std::string& obj_subgroup_type,uint32_t obj_subgroup_index, int sharding_policy){
     uint32_t meta_subgroup_index = 0, meta_shard_index = 0;
     print_r("[CREATING] object pool metadata info : (object_pool_id: " + obj_pool_id + ", subgroup_type: "+obj_subgroup_type \
                 + ", subgroup_index: "+std::to_string(obj_subgroup_index) + ")");
-    ObjectPoolMetadata obj_meta(obj_pool_id, obj_subgroup_type, obj_subgroup_index);
+    ObjectPoolMetadata obj_meta(obj_pool_id, obj_subgroup_type, obj_subgroup_index,sharding_policy);
     // std::shared_lock rlck(this->object_pool_info_cache_mutex);
     // if (object_pool_info_cache.find( obj_pool_id ) != object_pool_info_cache.end()) {
     //     ObjectPoolMetadata prev_meta = object_pool_info_cache.find(obj_pool_id);
@@ -427,23 +452,48 @@ ObjectPoolMetadata ServiceClient<CascadeTypes...>::find_object_pool( std::string
         ObjectPoolMetadata obj_pool_meta = object_pool_info_cache.at(object_pool_id);
         return obj_pool_meta;
     } else {
-        // TODO： find from PersistentCascadeStore
-        // if (is_persistent){
-        //     derecho::rpc::QueryResults<const ObjectPoolMetadata> result = PersistentCascadeMetadataWithStringKey::get(object_pool_id, persistent::INVALID_VERSION, 0, 0);
-        // } else{
-        derecho::rpc::QueryResults<const ObjectPoolMetadata> result = this->get<VolatileCascadeMetadataWithStringKey>(object_pool_id, persistent::INVALID_VERSION, 0, 0);
-        // }
+        derecho::rpc::QueryResults<const ObjectPoolMetadata> result = get<VolatileCascadeMetadataWithStringKey>(object_pool_id, persistent::INVALID_VERSION, 0, 0);
         for (auto& reply_future:result.get()) {
             auto temp = reply_future.second.get();
             print_r(static_cast<ObjectPoolMetadata>(temp).to_string());
-            ObjectPoolMetadata * reply = (ObjectPoolMetadata *) &temp;  
+            ObjectPoolMetadata reply = static_cast<ObjectPoolMetadata>(temp);
             std::unique_lock wlck(this->object_pool_info_cache_mutex);
-            print_r("          object_pool_id: " + object_pool_id + ", metadata: (" + reply->subgroup_type + ", "+ std::to_string(reply->subgroup_index)+ ")");
-            object_pool_info_cache[object_pool_id] = *reply;
-            return *reply;
+            print_r("          object_pool_id: " + object_pool_id + ", metadata: (" + reply.subgroup_type + ", "+ std::to_string(reply.subgroup_index)+ ")");
+            object_pool_info_cache[object_pool_id] = reply;
+            return reply;
         }
         return ObjectPoolMetadata();
     }
+}
+
+
+// META scheduler put
+template <typename... CascadeTypes>
+template <typename SubgroupType>
+derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> ServiceClient<CascadeTypes...>::triggerPut(
+        const typename SubgroupType::ObjectType& value, uint32_t subgroup_index,
+        uint32_t shard_index, bool use_scheduler) {
+    if (use_scheduler){
+        print_r("Trying TRIGGER PUT");
+        if constexpr (std::is_same<typename SubgroupType::KeyType,std::string>::value) {
+            std::string key = value.key;
+            size_t pos = key.rfind('/');
+            std::string prefix; // use prefix as object pool id
+            if (pos != std::string::npos) {
+                prefix = key.substr(0,pos);
+                ObjectPoolMetadata obj_meta = find_object_pool(prefix);
+                if(obj_meta.is_valid()){
+                    // scheduler put
+                    print_r("before pick shard" + std::to_string(shard_index));
+                    shard_index = pick_shard<SubgroupType>(value,obj_meta.sharding_policy_index ,obj_meta.subgroup_index);
+                    print_r("USING TRIGGER PUT" + std::to_string(shard_index));
+                    return put<SubgroupType>(value,subgroup_index,shard_index);
+                }
+                
+            }
+        }
+    }
+    return put<SubgroupType>(value, subgroup_index, shard_index);
 }
 
 
@@ -455,22 +505,28 @@ derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> ServiceCl
         uint32_t shard_index) {
     if (group_ptr != nullptr) {
         // META fist check if this object pool has been herer before
-
+        print_r("group_ptr != null");
+        
         std::lock_guard(this->group_ptr_mutex);
         if (static_cast<uint32_t>(group_ptr->template get_my_shard<SubgroupType>(subgroup_index)) == shard_index) {
             // do ordered put as a member (Replicated).
+            print_r("replicated");
             auto& subgroup_handle = group_ptr->template get_subgroup<SubgroupType>(subgroup_index);
             return subgroup_handle.template ordered_send<RPC_NAME(ordered_put)>(value);
         } else {
             // do normal put as a non member (ExternalCaller).
+            print_r("external caller");
             auto& subgroup_handle = group_ptr->template get_nonmember_subgroup<SubgroupType>(subgroup_index);
+            // object put location META
             node_id_t node_id = pick_member_by_policy<SubgroupType>(subgroup_index,shard_index);
             return subgroup_handle.template p2p_send<RPC_NAME(put)>(node_id,value);
         }
     } else {
+        print_r("[group_ptr] == null");
         std::lock_guard(this->external_group_ptr_mutex);
         // call as an external client (ExternalClientCaller).
         auto& caller = external_group_ptr->template get_subgroup_caller<SubgroupType>(subgroup_index);
+        // object put location META
         node_id_t node_id = pick_member_by_policy<SubgroupType>(subgroup_index,shard_index);
         return caller.template p2p_send<RPC_NAME(put)>(node_id,value);
     }

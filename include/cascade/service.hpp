@@ -259,7 +259,8 @@ namespace cascade {
     #define DELIVERY_MODE_ORDERED   "Ordered"
     #define DELIVERY_MODE_RAW       "Raw"
     #define PROFILES_BY_SHARD       "profiles_by_shard"
-    
+
+
     /**
      * The ServiceClient template class contains all APIs needed for read/write data. The four core APIs are put, remove,
      * get, and get_by_time. We also provide a set of helper APIs for the client to get the group topology. By default, the
@@ -345,6 +346,15 @@ namespace cascade {
          * in case if there is new object_pool created/updated
          */
         void refresh_object_pool_meta_cache();
+
+        /**
+         * Pick a shard by a given object pool metadata.
+         * @param value
+         * @param object_pool_metadata
+         */
+        template <typename SubgroupType>
+        uint32_t pick_shard(const typename SubgroupType::ObjectType& value,int policy, uint32_t subgroup_index );
+
 
         /**
          * Pick a member by a given a policy.
@@ -435,7 +445,7 @@ namespace cascade {
          */
         derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> create_object_pool(
                                         std::string& object_pool_id,
-                                        std::string& obj_subgroup_type,uint32_t obj_subgroup_index=0);
+                                        std::string& obj_subgroup_type,uint32_t obj_subgroup_index=0, int sharding_policy=0);
 
         /**
          * "remove" deletes an object_pool_metadata object with the object_pool_id from the metadata service subgroup
@@ -458,6 +468,13 @@ namespace cascade {
          *                                     objects_locations in shard granularity
          */
         ObjectPoolMetadata find_object_pool(std::string& object_pool_id);
+
+
+        // METATODO: Add description
+        template <typename SubgroupType>
+        derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> triggerPut(const typename SubgroupType::ObjectType& object,
+                uint32_t subgroup_index=0, uint32_t shard_index=0, bool use_scheduler=false);
+
 
         /**
          * "put" writes an object to a given subgroup/shard.
