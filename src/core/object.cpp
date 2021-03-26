@@ -377,18 +377,16 @@ ObjectWithStringKey create_null_object_cb<std::string,ObjectWithStringKey,&Objec
 
 // META
 bool ObjectPoolMetadata::operator==(const ObjectPoolMetadata& other) {
-    return (this->object_pool_id == other.object_pool_id) && (this->version == other.version);
+    return (this->object_pool_id == other.object_pool_id) && (this->subgroup_type == other.subgroup_type)
+    && (this->subgroup_index == other.subgroup_index) && (this->sharding_policy == other.sharding_policy);
 }
 
 
 void ObjectPoolMetadata::operator=(const ObjectPoolMetadata& other) {
     this->object_pool_id = other.object_pool_id;
-    this->version = other.version;
-    this->timestamp_us = other.timestamp_us; 
     this->subgroup_type = other.subgroup_type;
-    this->sharding_policy_index = other.sharding_policy_index;
-    this->objects_locations = other.objects_locations;
-    
+    this->subgroup_index = other.subgroup_index;
+    this->sharding_policy = other.sharding_policy;
 }
 
 bool ObjectPoolMetadata::is_valid() const {
@@ -398,68 +396,41 @@ bool ObjectPoolMetadata::is_valid() const {
 // constructor 0 : copy constructor
 ObjectPoolMetadata::ObjectPoolMetadata(const std::string& _object_pool_id, 
                     const std::string& _subgroup_type, const uint32_t _subgroup_index):
-    version(persistent::INVALID_VERSION),
-    timestamp_us(0),
+    object_pool_id(_object_pool_id),
     subgroup_type(_subgroup_type),
     subgroup_index(_subgroup_index),
-    sharding_policy_index(0) {}
+    sharding_policy(0) {}
     
-// constructor 0.5 : copy constructor
-ObjectPoolMetadata::ObjectPoolMetadata(const persistent::version_t _version,
-                        const uint64_t _timestamp_us,
-                        const std::string& _object_pool_id, 
-                        const std::string& _subgroup_type,
-                        const uint32_t _subgroup_index,
-                        const int _sharding_policy_index,
-                        const std::unordered_map<std::string,uint32_t>&  _objects_locations):
-    version(_version),
-    timestamp_us(_timestamp_us),
-    object_pool_id(_object_pool_id), 
-    subgroup_type(_subgroup_type),
-    subgroup_index(_subgroup_index),
-    sharding_policy_index(_sharding_policy_index),
-    objects_locations(_objects_locations) {}
-
 // constructor 1 : copy consotructor
 ObjectPoolMetadata::ObjectPoolMetadata(const std::string& _object_pool_id,
                                 const std::string& _subgroup_type,
                                 const uint32_t _subgroup_index,
-                                const int _sharding_policy_index): 
-    version(persistent::INVALID_VERSION),
-    timestamp_us(0),
+                                const int _sharding_policy): 
     object_pool_id(_object_pool_id),
     subgroup_type(_subgroup_type),
     subgroup_index(_subgroup_index),
-    sharding_policy_index(_sharding_policy_index) {}
+    sharding_policy(_sharding_policy) {}
 
 // constructor 2 : move constructor
 ObjectPoolMetadata::ObjectPoolMetadata(ObjectPoolMetadata&& other) : 
-    version(other.version),
-    timestamp_us(other.timestamp_us),
     object_pool_id(other.object_pool_id),
     subgroup_type(other.subgroup_type),
     subgroup_index(other.subgroup_index),
-    sharding_policy_index(other.sharding_policy_index),
-    objects_locations(std::move(other.objects_locations)) {}
+    sharding_policy(other.sharding_policy) {}
 
 // constructor 3 : copy constructor
 ObjectPoolMetadata::ObjectPoolMetadata(const ObjectPoolMetadata& other) : 
-    version(other.version),
-    timestamp_us(other.timestamp_us),
     object_pool_id(other.object_pool_id),
     subgroup_type(other.subgroup_type),
     subgroup_index(other.subgroup_index),
-    sharding_policy_index(other.sharding_policy_index),
-    objects_locations(other.objects_locations) {}
+    sharding_policy(other.sharding_policy){}
 
 // constructor 4 : default invalid constructor
 ObjectPoolMetadata::ObjectPoolMetadata() : 
-    version(persistent::INVALID_VERSION),
-    timestamp_us(0),
     object_pool_id(""),
     subgroup_type(""),
     subgroup_index(0),
-    sharding_policy_index(0) {}
+    sharding_policy(0){}
 
 const std::string& ObjectPoolMetadata::get_key_ref() const {
     return this->object_pool_id;
@@ -470,33 +441,25 @@ bool ObjectPoolMetadata::is_null() const {
 }
 
 void ObjectPoolMetadata::set_version(persistent::version_t ver) const {
-    this->version = ver;
 }
 
 persistent::version_t ObjectPoolMetadata::get_version() const {
-    return this->version;
+    return persistent::INVALID_VERSION;
 }
 
 void ObjectPoolMetadata::set_timestamp(uint64_t ts_us) const {
-    this->timestamp_us = ts_us;
 }
 
 uint64_t ObjectPoolMetadata::get_timestamp() const {
-    return this->timestamp_us;
+    return 0;
 }
 
 void ObjectPoolMetadata::set_previous_version(persistent::version_t prev_ver, persistent::version_t prev_ver_by_key) const {
 }
 
 bool ObjectPoolMetadata::verify_previous_version(persistent::version_t prev_ver, persistent::version_t prev_ver_by_key) const {
-    // NOTICE: We provide the default behaviour of verify_previous_version as a demonstration. Please change the
-    // following code or implementing your own Object Types with a verify_previous_version implementation to customize
-    // it. The default behavior is self-explanatory and can be disabled by setting corresponding object previous versions to
-    // INVALID_VERSION.
-
     return true;
 }
-
 
 template <>
 ObjectPoolMetadata create_null_object_cb<std::string,ObjectPoolMetadata,&ObjectPoolMetadata::IK,&ObjectPoolMetadata::IV>(const std::string& object_pool_id) {

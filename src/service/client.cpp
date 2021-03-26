@@ -127,6 +127,12 @@ void find_object_pool(ServiceClientAPI& capi, std::string& key) {
     std::cout<<result.to_string()<<std::endl;
 }
 
+// TESTING PURPOSES
+void remove_object_pool(ServiceClientAPI& capi, std::string& key) {
+    derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> result = capi.remove_object_pool(key);
+    check_put_and_remove_result(result);
+}
+
 template <typename SubgroupType>
 void put(ServiceClientAPI& capi, std::string& key, std::string& value, persistent::version_t pver, persistent::version_t pver_bk, uint32_t subgroup_index, uint32_t shard_index) {
     typename SubgroupType::ObjectType obj;
@@ -141,7 +147,7 @@ void put(ServiceClientAPI& capi, std::string& key, std::string& value, persisten
     obj.previous_version = pver;
     obj.previous_version_by_key = pver_bk;
     obj.blob = Blob(value.c_str(),value.length());
-    derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> result = capi.template triggerPut<SubgroupType>(obj, subgroup_index, shard_index,true);
+    derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> result = capi.template put<SubgroupType>(obj, subgroup_index, shard_index,true);
     check_put_and_remove_result(result);
 }
 
@@ -352,7 +358,8 @@ void interactive_test(ServiceClientAPI& capi) {
     // "list_subgroup_members [subgroup_id(0)] [shard_index(0)]\n\tlist members in shard by subgroup id.\n"
     "set_member_selection_policy <type> <subgroup_index> <shard_index> <policy> [user_specified_node_id]\n\tset member selection policy\n"
     "get_member_selection_policy <type> [subgroup_index(0)] [shard_index(0)]\n\tget member selection policy\n"
-    "find_object_pool <key>"
+    "find_object_pool <object_pool_id>"
+    "remove_object_pool <object_pool_id>"
     "put <type> <key> <value> [pver(-1)] [pver_by_key(-1)] [subgroup_index(0)] [shard_index(0)]\n\tput an object\n"
     "remove <type> <key> [subgroup_index(0)] [shard_index(0)]\n\tremove an object\n"
     "get <type> <key> [version(-1)] [subgroup_index(0)] [shard_index(0)]\n\tget an object(by version)\n"
@@ -449,6 +456,12 @@ void interactive_test(ServiceClientAPI& capi) {
                 user_specified_node_id = static_cast<node_id_t>(std::stoi(cmd_tokens[5]));
             }
             on_subgroup_type(cmd_tokens[1],set_member_selection_policy,capi,subgroup_index,shard_index,policy,user_specified_node_id);
+        }else if (cmd_tokens[0] == "remove_object_pool") {
+             if (cmd_tokens.size() < 1) {
+                 print_red("Invalid format:" + cmdline);
+                 continue;
+             }
+             remove_object_pool(capi, cmd_tokens[1]);
         }else if (cmd_tokens[0] == "find_object_pool") {
              if (cmd_tokens.size() < 1) {
                  print_red("Invalid format:" + cmdline);

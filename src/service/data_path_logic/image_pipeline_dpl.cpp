@@ -15,6 +15,7 @@ namespace cascade{
 #define MY_PREFIX   "/image_pipeline"
 #define MY_UUID     "48e60f7c"
 #define MY_DESC     "DLL DPL that performs inference on image frames collected on the farm"
+#define EVALUATION 1 
 
 std::unordered_set<std::string> list_prefixes() {
     return {MY_PREFIX};
@@ -264,7 +265,7 @@ public:
                               ICascadeContext* ctxt,
                               uint32_t worker_id) override {
         std::cout << "[image pipeline ocdpo]: I(" << worker_id << ") received an object with key=" << key_string << std::endl;
-        auto* typed_ctxt = dynamic_cast<CascadeContext<VolatileCascadeStoreWithStringKey,PersistentCascadeStoreWithStringKey>*>(ctxt);
+        auto* typed_ctxt = dynamic_cast<CascadeContext<VolatileCascadeMetadataWithStringKey,VolatileCascadeStoreWithStringKey,PersistentCascadeStoreWithStringKey>*>(ctxt);
         /* step 1 prepare context */
         bool use_gpu = derecho::hasCustomizedConfKey(DPL_CONF_USE_GPU)?derecho::getConfBoolean(DPL_CONF_USE_GPU):false;
         if (use_gpu && typed_ctxt->resource_descriptor.gpus.size()==0) {
@@ -309,6 +310,7 @@ public:
         clr.photo_id = fd->photo_id;
         clr.inference_us = (after_inference_ns-before_inference_ns)/1000;
 #endif
+        // RUN SCHEDULED PUT
         auto result = typed_ctxt->get_service_client_ref().template put<VolatileCascadeStoreWithStringKey>(obj);
         for (auto& reply_future:result.get()) {
             auto reply = reply_future.second.get();
@@ -335,12 +337,12 @@ public:
 void register_triggers(ICascadeContext* ctxt) {
     // Please make sure the CascadeContext type matches the CascadeService type, which is defined in server.cpp if you
     // use the default cascade service binary.
-    auto* typed_ctxt = dynamic_cast<CascadeContext<VolatileCascadeStoreWithStringKey,PersistentCascadeStoreWithStringKey>*>(ctxt);
+    auto* typed_ctxt = dynamic_cast<CascadeContext<VolatileCascadeMetadataWithStringKey,VolatileCascadeStoreWithStringKey,PersistentCascadeStoreWithStringKey>*>(ctxt);
     typed_ctxt->register_prefixes({MY_PREFIX},MY_UUID,std::make_shared<ClassifierTrigger>());
 }
 
 void unregister_triggers(ICascadeContext* ctxt) {
-    auto* typed_ctxt = dynamic_cast<CascadeContext<VolatileCascadeStoreWithStringKey,PersistentCascadeStoreWithStringKey>*>(ctxt);
+    auto* typed_ctxt = dynamic_cast<CascadeContext<VolatileCascadeMetadataWithStringKey,VolatileCascadeStoreWithStringKey,PersistentCascadeStoreWithStringKey>*>(ctxt);
     typed_ctxt->unregister_prefixes({MY_PREFIX},MY_UUID);
 }
 

@@ -169,7 +169,7 @@ auto put(ServiceClientAPI& capi, std::string& key, std::string& value, uint32_t 
         return;
     }
     obj.blob = Blob(value.c_str(),value.length());
-    derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> result = capi.template triggerPut<SubgroupType>(obj, subgroup_index, shard_index,true);
+    derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> result = capi.template put<SubgroupType>(obj, subgroup_index, shard_index,true);
     QueryResultsStore<std::tuple<persistent::version_t,uint64_t>, std::vector<long>>* s = new QueryResultsStore<std::tuple<persistent::version_t,uint64_t>, std::vector<long>>(result, bundle_f); 
     return py::cast(s);
 }

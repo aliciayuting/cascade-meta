@@ -6,7 +6,6 @@
 #include <string.h>
 #include <string>
 #include <time.h>
-#include <vector>
 #include <optional>
 #include <tuple>
 
@@ -87,8 +86,6 @@ public:
     mutable persistent::version_t                       previous_version_by_key; // previous version by key, INVALID_VERSION for the first value of the key.
     uint64_t                                            key; // object_id
     Blob                                                blob; // the object
-    mutable std::unordered_map<std::string,
-                        std::vector<std::string>>       dag;            // the DAG structure of the tasks prefix
 
     // bool operator==(const ObjectWithUInt64Key& other);
 
@@ -182,8 +179,6 @@ public:
     mutable persistent::version_t                       previous_version_by_key; // previous version by key, INVALID_VERSION for the first value of the key.
     std::string                                         key;                     // object_id
     Blob                                                blob;                    // the object data
-    mutable std::unordered_map<std::string,
-                        std::vector<std::string>>       dag;                    // the DAG structure of the job's prefix
 
     // bool operator==(const ObjectWithStringKey& other);
 
@@ -264,17 +259,11 @@ class ObjectPoolMetadata :  public mutils::ByteRepresentable,
                             public IKeepTimestamp,
                             public IVerifyPreviousVersion {
 public:
-    mutable persistent::version_t                       version;                // object version
-    mutable uint64_t                                    timestamp_us;           // timestamp in microsecond
     mutable std::string                                 object_pool_id;          // the identifier of the object pool
     mutable std::string                                 subgroup_type;           // the subgroup type of the object pool
     mutable uint32_t                                    subgroup_index;          // the subgroup index of the object pool
-    mutable int                                         sharding_policy_index;   // index of shard member selection policy, default 0 
-    mutable std::unordered_map<std::string,
-                            uint32_t>                   objects_locations;       // the list of shards where it contains the objects
+    mutable int                                         sharding_policy;   // index of shard member selection policy, default 0 
 
-
-// farm1/photo2
     bool operator==(const ObjectPoolMetadata& other);
     void operator=(const ObjectPoolMetadata& other);
 
@@ -282,20 +271,11 @@ public:
     ObjectPoolMetadata(const std::string& _object_pool_id, 
                         const std::string& _subgroup_type, const uint32_t _subgroup_index );
 
-    // constructor 0.5 : copy constructor
-    ObjectPoolMetadata(const persistent::version_t _version,
-                        const uint64_t _timestamp_us,
-                        const std::string& _object_pool_id, 
-                        const std::string& _subgroup_type,
-                        const uint32_t _subgroup_index,
-                        const int _sharding_policy_index,
-                        const std::unordered_map<std::string,uint32_t>&  _objects_locations);
-
     // constructor 1 : copy consotructor
     ObjectPoolMetadata (const std::string& _object_pool_id,
                         const std::string& _subgroup_type,
                         const uint32_t _subgroup_index,
-                        const int _sharding_policy_index);
+                        const int _sharding_policy);
 
     // constructor 2 : move constructor
     ObjectPoolMetadata (ObjectPoolMetadata&& other);
@@ -310,6 +290,8 @@ public:
     virtual const std::string& get_key_ref() const override;
     virtual bool is_null() const override;
     virtual bool is_valid() const override;
+
+    // functions not used, overwrite to match derecho::cascade::IKeepPreviousVersion::___
     virtual void set_version(persistent::version_t ver) const override;
     virtual persistent::version_t get_version() const override;
     virtual void set_timestamp(uint64_t ts_us) const override;
@@ -317,25 +299,22 @@ public:
     virtual void set_previous_version(persistent::version_t prev_ver, persistent::version_t perv_ver_by_key) const override;
     virtual bool verify_previous_version(persistent::version_t prev_ver, persistent::version_t perv_ver_by_key) const override;
 
-    DEFAULT_SERIALIZATION_SUPPORT(ObjectPoolMetadata, version, timestamp_us, 
-                                    object_pool_id, subgroup_type, subgroup_index, sharding_policy_index,objects_locations);
+
+    DEFAULT_SERIALIZATION_SUPPORT(ObjectPoolMetadata,object_pool_id, subgroup_type, subgroup_index, sharding_policy);
 
     // IK and IV for volatile cascade store
     static std::string IK;
     static ObjectPoolMetadata IV;
 
-    
-
     std::string to_string() {
-        std::string res = "OPMS{pool_id:"+ object_pool_id + ", subgroup type:" + subgroup_type +", subgroup index: " + std::to_string(subgroup_index) + 
-        ", sharding policy"+ std::to_string(sharding_policy_index) + "}";
+        std::string res = "ObjectPoolMetadata{pool_id:"+ object_pool_id + ", subgroup type:" + subgroup_type +", subgroup index: " + std::to_string(subgroup_index) + 
+        ", sharding policy"+ std::to_string(sharding_policy) + "}";
         return res;
     }
 };
 
 inline std::ostream& operator<<(std::ostream& out, const ObjectPoolMetadata& o) {
-    out << "ObjectMetadataWithStringKey{ver: 0x" << std::hex << o.version << std::dec 
-        << ", object pool id:" << o.object_pool_id
+    out << "ObjectMetadataWithStringKey{object pool id:" << o.object_pool_id
         << ", \n   object pool info: subgroup type" << o.subgroup_type
         << ", subgroup index: " << std::to_string(o.subgroup_index) << "}";
     return out;

@@ -373,7 +373,7 @@ public:
             clr.inference_us = (after_inference_ns-before_inference_ns)/1000;
 #endif
             // RUN SCHEDULED PUT
-            auto result = ctxt->get_service_client_ref().template triggerPut<VolatileCascadeStoreWithStringKey>(obj);
+            auto result = ctxt->get_service_client_ref().template put<VolatileCascadeStoreWithStringKey>(obj);
             for (auto& reply_future:result.get()) {
                 auto reply = reply_future.second.get();
                 dbg_default_debug("node({}) replied with version:({:x},{}us)",reply_future.first,std::get<0>(reply),std::get<1>(reply));

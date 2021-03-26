@@ -351,9 +351,11 @@ namespace cascade {
          * Pick a shard by a given object pool metadata.
          * @param value
          * @param object_pool_metadata
+         * @param subgroup_index  - default subgroup_index if object_pool_metadata not found
+         * @param shard_index     - default shard_index  
          */
         template <typename SubgroupType>
-        uint32_t pick_shard(const typename SubgroupType::ObjectType& value,int policy, uint32_t subgroup_index );
+        void pick_shard(const typename SubgroupType::KeyType& key, uint32_t &subgroup_index, uint32_t &shard_index );
 
 
         /**
@@ -469,13 +471,6 @@ namespace cascade {
          */
         ObjectPoolMetadata find_object_pool(std::string& object_pool_id);
 
-
-        // METATODO: Add description
-        template <typename SubgroupType>
-        derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> triggerPut(const typename SubgroupType::ObjectType& object,
-                uint32_t subgroup_index=0, uint32_t shard_index=0, bool use_scheduler=true);
-
-
         /**
          * "put" writes an object to a given subgroup/shard.
          *
@@ -491,13 +486,14 @@ namespace cascade {
          *                            already. TODO: should we make it an optional feature?
          * @subugroup_index         the subgroup index of CascadeType
          * @shard_index             the shard index.
+         * @use_meta                use the object pool metadata to put
          *
          * @return a future to the version and timestamp of the put operation.
          * TODO: check if the user application is responsible for reclaim the future by reading it sometime.
          */
         template <typename SubgroupType>
         derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> put(const typename SubgroupType::ObjectType& object,
-                uint32_t subgroup_index=0, uint32_t shard_index=0);
+                uint32_t subgroup_index=0, uint32_t shard_index=0, bool use_meta=false);
     
         /**
          * "remove" deletes an object with the given key.
@@ -505,13 +501,14 @@ namespace cascade {
          * @param key               the object key
          * @subugroup_index         the subgroup index of CascadeType
          * @shard_index             the shard index.
+         * @use_meta                use the created object pool metadata to remove
          *
          * @return a future to the version and timestamp of the put operation.
          * TODO: check if the user application is responsible for reclaim the future by reading it sometime.
          */
         template <typename SubgroupType>
         derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> remove(const typename SubgroupType::KeyType& key,
-                uint32_t subgroup_index=0, uint32_t shard_index=0);
+                uint32_t subgroup_index=0, uint32_t shard_index=0, bool use_meta=false);
     
         /**
          * "get" retrieve the object of a given key
@@ -521,13 +518,14 @@ namespace cascade {
          *                          state of the key. Otherwise, it will try to read the key's state at version.
          * @subugroup_index         the subgroup index of CascadeType
          * @shard_index             the shard index.
+         * @use_meta                use the object pool metadata to get
          *
          * @return a future to the retrieved object.
          * TODO: check if the user application is responsible for reclaim the future by reading it sometime.
          */
         template <typename SubgroupType>
         derecho::rpc::QueryResults<const typename SubgroupType::ObjectType> get(const typename SubgroupType::KeyType& key, const persistent::version_t& version = CURRENT_VERSION,
-                uint32_t subgroup_index=0, uint32_t shard_index=0);
+                uint32_t subgroup_index=0, uint32_t shard_index=0, bool use_meta=false);
     
         /**
          * "get_by_time" retrieve the object of a given key
