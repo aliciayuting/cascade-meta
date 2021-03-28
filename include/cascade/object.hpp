@@ -262,7 +262,11 @@ public:
     mutable std::string                                 object_pool_id;          // the identifier of the object pool
     mutable std::string                                 subgroup_type;           // the subgroup type of the object pool
     mutable uint32_t                                    subgroup_index;          // the subgroup index of the object pool
-    mutable int                                         sharding_policy;   // index of shard member selection policy, default 0 
+    mutable int                                         sharding_policy;         // index of shard member selection policy, default 0 
+    mutable std::unordered_map<std::string,
+                            uint32_t>                   objects_locations;       // the list of shards where it contains the objects
+    mutable bool                                        deleted;                 // deadline of the cleaning of objects inside the object_pool
+
 
     bool operator==(const ObjectPoolMetadata& other);
     void operator=(const ObjectPoolMetadata& other);
@@ -270,12 +274,17 @@ public:
     // constructor 0 : copy constructor
     ObjectPoolMetadata(const std::string& _object_pool_id, 
                         const std::string& _subgroup_type, const uint32_t _subgroup_index );
-
-    // constructor 1 : copy consotructor
-    ObjectPoolMetadata (const std::string& _object_pool_id,
-                        const std::string& _subgroup_type,
-                        const uint32_t _subgroup_index,
+    
+    // constructor 0.5: copy constructor
+    ObjectPoolMetadata(const std::string& _object_pool_id, 
+                        const std::string& _subgroup_type, const uint32_t _subgroup_index,
                         const int _sharding_policy);
+    
+    // constructor 1: copy constructor
+    ObjectPoolMetadata(const std::string& _object_pool_id, 
+                        const std::string& _subgroup_type, const uint32_t _subgroup_index,
+                        const int _sharding_policy, 
+                        const std::unordered_map<std::string,uint32_t> _objects_locations);
 
     // constructor 2 : move constructor
     ObjectPoolMetadata (ObjectPoolMetadata&& other);
@@ -286,7 +295,6 @@ public:
     // constructor 4 : default invalid constructor
     ObjectPoolMetadata();
 
-    
     virtual const std::string& get_key_ref() const override;
     virtual bool is_null() const override;
     virtual bool is_valid() const override;
@@ -300,15 +308,17 @@ public:
     virtual bool verify_previous_version(persistent::version_t prev_ver, persistent::version_t perv_ver_by_key) const override;
 
 
-    DEFAULT_SERIALIZATION_SUPPORT(ObjectPoolMetadata,object_pool_id, subgroup_type, subgroup_index, sharding_policy);
+    DEFAULT_SERIALIZATION_SUPPORT(ObjectPoolMetadata,object_pool_id, subgroup_type, subgroup_index, 
+                                                    sharding_policy, objects_locations);
 
     // IK and IV for volatile cascade store
     static std::string IK;
     static ObjectPoolMetadata IV;
 
     std::string to_string() {
-        std::string res = "ObjectPoolMetadata{pool_id:"+ object_pool_id + ", subgroup type:" + subgroup_type +", subgroup index: " + std::to_string(subgroup_index) + 
-        ", sharding policy"+ std::to_string(sharding_policy) + "}";
+        std::string res = "ObjectPoolMetadata{pool_id:"+ object_pool_id + ", subgroup type:" + subgroup_type 
+        +", subgroup index: " + std::to_string(subgroup_index) 
+        + ", sharding policy: "+ std::to_string(sharding_policy) + "}";
         return res;
     }
 };

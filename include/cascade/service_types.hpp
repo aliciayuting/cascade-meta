@@ -17,5 +17,7 @@ using VolatileCascadeStoreWithStringKey = VolatileCascadeStore<std::string,Objec
 // using PCSU = PersistentCascadeStore<uint64_t,ObjectWithUInt64Key,&ObjectWithUInt64Key::IK,&ObjectWithUInt64Key::IV,ST_FILE>;
 using PersistentCascadeStoreWithStringKey = PersistentCascadeStore<std::string,ObjectWithStringKey,&ObjectWithStringKey::IK,&ObjectWithStringKey::IV,ST_FILE>;
 
+
+
 } // namespace cascade
 } // namespace derecho

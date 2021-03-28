@@ -355,7 +355,8 @@ namespace cascade {
          * @param shard_index     - default shard_index  
          */
         template <typename SubgroupType>
-        void pick_shard(const typename SubgroupType::KeyType& key, uint32_t &subgroup_index, uint32_t &shard_index );
+        std::tuple<uint32_t, uint32_t> pick_shard(const typename SubgroupType::KeyType& key, 
+                                                                uint32_t subgroup_index, uint32_t shard_index );
 
 
         /**
@@ -447,7 +448,8 @@ namespace cascade {
          */
         derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> create_object_pool(
                                         std::string& object_pool_id,
-                                        std::string& obj_subgroup_type,uint32_t obj_subgroup_index=0, int sharding_policy=0);
+                                        std::string& obj_subgroup_type,uint32_t obj_subgroup_index=0, int sharding_policy=0,
+                                        uint32_t meta_subgroup_index=0, uint32_t meta_shard_index=0);
 
         /**
          * "remove" deletes an object_pool_metadata object with the object_pool_id from the metadata service subgroup
@@ -458,7 +460,8 @@ namespace cascade {
          * @return a future to the version and timestamp of the remove operation.
          */
         derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> remove_object_pool(
-                                        std::string& object_pool_id);
+                                        std::string& object_pool_id,
+                                        uint32_t metadata_subgroup_index=0, uint32_t meta_shard_index=0);
 
         /**
          * "find_object_pool" get the object_pool_metadata of the object_pool_id

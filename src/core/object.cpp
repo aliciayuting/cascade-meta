@@ -390,7 +390,7 @@ void ObjectPoolMetadata::operator=(const ObjectPoolMetadata& other) {
 }
 
 bool ObjectPoolMetadata::is_valid() const {
-    return !object_pool_id.empty();
+    return (!object_pool_id.empty()) && (!this->deleted);
 }
 
 // constructor 0 : copy constructor
@@ -399,38 +399,57 @@ ObjectPoolMetadata::ObjectPoolMetadata(const std::string& _object_pool_id,
     object_pool_id(_object_pool_id),
     subgroup_type(_subgroup_type),
     subgroup_index(_subgroup_index),
-    sharding_policy(0) {}
-    
-// constructor 1 : copy consotructor
-ObjectPoolMetadata::ObjectPoolMetadata(const std::string& _object_pool_id,
-                                const std::string& _subgroup_type,
-                                const uint32_t _subgroup_index,
-                                const int _sharding_policy): 
+    sharding_policy(0),
+    deleted(false) {}
+
+// constructor 0.5 : copy consotructor
+ObjectPoolMetadata::ObjectPoolMetadata(const std::string& _object_pool_id, 
+                        const std::string& _subgroup_type, const uint32_t _subgroup_index,
+                        const int _sharding_policy): 
     object_pool_id(_object_pool_id),
     subgroup_type(_subgroup_type),
     subgroup_index(_subgroup_index),
-    sharding_policy(_sharding_policy) {}
+    sharding_policy(_sharding_policy),
+    deleted(false) {}
+
+    
+// constructor 1 : copy consotructor
+ObjectPoolMetadata::ObjectPoolMetadata(const std::string& _object_pool_id, 
+                        const std::string& _subgroup_type, const uint32_t _subgroup_index,
+                        const int _sharding_policy,
+                        const std::unordered_map<std::string,uint32_t> _objects_locations): 
+    object_pool_id(_object_pool_id),
+    subgroup_type(_subgroup_type),
+    subgroup_index(_subgroup_index),
+    sharding_policy(_sharding_policy),
+    objects_locations(_objects_locations),
+    deleted(false) {}
 
 // constructor 2 : move constructor
 ObjectPoolMetadata::ObjectPoolMetadata(ObjectPoolMetadata&& other) : 
     object_pool_id(other.object_pool_id),
     subgroup_type(other.subgroup_type),
     subgroup_index(other.subgroup_index),
-    sharding_policy(other.sharding_policy) {}
+    sharding_policy(other.sharding_policy),
+    objects_locations(other.objects_locations),
+    deleted(other.deleted) {}
 
 // constructor 3 : copy constructor
 ObjectPoolMetadata::ObjectPoolMetadata(const ObjectPoolMetadata& other) : 
     object_pool_id(other.object_pool_id),
     subgroup_type(other.subgroup_type),
     subgroup_index(other.subgroup_index),
-    sharding_policy(other.sharding_policy){}
+    sharding_policy(other.sharding_policy),
+    objects_locations(other.objects_locations),
+    deleted(other.deleted) {}
 
 // constructor 4 : default invalid constructor
 ObjectPoolMetadata::ObjectPoolMetadata() : 
     object_pool_id(""),
     subgroup_type(""),
     subgroup_index(0),
-    sharding_policy(0){}
+    sharding_policy(0),
+    deleted(false) {}
 
 const std::string& ObjectPoolMetadata::get_key_ref() const {
     return this->object_pool_id;
