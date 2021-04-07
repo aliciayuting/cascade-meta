@@ -1,0 +1,47 @@
+{
+  "dfg_id": 0,
+  "dfg_name": "/cow_dfg1",
+  "num_nodes": 4,
+  "layout": [
+    {
+      "object_pool_id": "/Ithaca/farm1",
+      "subgroup_type": "VCSS",
+      "subgroup_index": 0,
+      "sharding_policy": 0,
+      "logics": ["libconsole_printer_dpl"] ,
+      "UUID": "48e60f7c",
+      "external_inputs": [],
+      "output_objpools": ["/flower", "/pet"]
+    },
+    {
+      "object_pool_id": "/flower",
+      "subgroup_type": "VCSS",
+      "subgroup_index": 0,
+      "sharding_policy": 1,
+      "logics": ["libimage_pipeline_dpl"],
+      "UUID": "48e60f8b",
+      "external_inputs": ["/flower-model/flower-recognition-0040.params","/flower-model/flower-recognition-symbol.json","/flower-model/synset.txt"],
+      "output_objpools": ["/cow_dfg1_result"]
+    },
+    {
+      "object_pool_id": "/pet",
+      "subgroup_type": "VCSS",
+      "subgroup_index": 0,
+      "sharding_policy": 0,
+      "logics": ["libimage_pipeline_dpl"],
+      "UUID": "48e60f9a",
+      "external_inputs": ["/pet-model/pet-recognition-0010.params","/pet-model/pet-recognition-symbol.json","/pet-model/synset.txt"],
+      "output_objpools": ["/cow_dfg1_result"]
+    },
+    {
+      "object_pool_id": "/cow_dfg1_result",
+      "subgroup_type": "VCSS",
+      "subgroup_index": 0,
+      "sharding_policy": 0,
+      "logics": ["libimage_pipeline_dpl"],
+      "UUID": "e60f9g",
+      "external_inputs": [],
+      "output_objpools": []
+    }
+]
+}

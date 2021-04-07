@@ -290,7 +290,8 @@ PYBIND11_MODULE(cascade_py,m)
       .def("create_object_pool",[](ServiceClientAPI &capi, std::string object_pool_id,std::string subgroup_type, std::string subgroup_index){
             // TODO: return the query result of create_obj_pool
             uint32_t s_index = static_cast<uint32_t>(std::stoi(subgroup_index));
-            auto result = capi.create_object_pool(object_pool_id,subgroup_type, s_index);
+            ObjectPoolMetadata obj_pool_metadata(object_pool_id,subgroup_type, s_index);
+            auto result = capi.create_object_pool(object_pool_id,obj_pool_metadata);
             return py::cast(NULL);
         })
 	  .def("get_shard_members", [](ServiceClientAPI &capi, std::string service_type,  uint32_t subgroup_index, uint32_t shard_index){
@@ -333,7 +334,7 @@ PYBIND11_MODULE(cascade_py,m)
               }
 		return pol;
           }, "Get the member selection policy of the specified subgroup and shard.")
-         .def("put", [](ServiceClientAPI& capi, std::string service_type, std::string& key, py::bytes value, uint32_t subgroup_index, uint32_t shard_index){
+         .def("put", [](ServiceClientAPI& capi, std::string service_type, std::string& key, py::bytes value, uint32_t subgroup_index, uint32_t shard_index,bool use_meta){
 
             std::string val = std::string(value);
             on_subgroup_type(service_type, return put, capi, key, val, subgroup_index, shard_index);

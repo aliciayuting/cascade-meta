@@ -65,7 +65,7 @@ static StaticActionTable static_action_table;
 /*
  * The image frame data in predefined 224x224 pixel format.
  */
-class ImageFrame: public ActionData,public Blob {
+class ImageFrame: public Blob {
 public:
     std::string key;
     ImageFrame(const std::string& k, const Blob& other): Blob(other), key(k) {}

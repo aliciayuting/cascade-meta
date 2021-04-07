@@ -21,8 +21,6 @@
 
 using json = nlohmann::json;
 
-using json = nlohmann::json; 
-
 /**
  * The cascade service templates
  * 
@@ -438,17 +436,36 @@ namespace cascade {
         // META
         /**
          * "create_object_pool" writes an object_pool_metadata object to a given metadata service subgroup/shard.
-         *
+         *  If the object Pool Metadata already exist then this operation cannot overwrite
+         * 
          * @param object_pool_id         the object_pool_id of the metadata to store
-         * @obj_subgroup_type            the object_pool's subgroup type information
-         * @obj_subgroup_index           the object_pool's subgroup index information
+         * @object_pool_meta             the object pool metadata object
+         * @meta_subgroup_type            the object_pool's subgroup type information
+         * @meta_subgroup_index           the object_pool's subgroup index information
          *
          * @return a future to the version and timestamp of the put operation.
          * TODO: check if the user application is responsible for reclaim the future by reading it sometime.
          */
         derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> create_object_pool(
                                         std::string& object_pool_id,
-                                        std::string& obj_subgroup_type,uint32_t obj_subgroup_index=0, int sharding_policy=0,
+                                        ObjectPoolMetadata obj_pool_meta,
+                                        uint32_t meta_subgroup_index=0, uint32_t meta_shard_index=0);
+
+        /**
+         * "insert_pool_objlocs" add and merge objects locations an object_pool_metadata object.
+         *
+         * @param object_pool_id         the object_pool_id of the metadata to store
+         * @objects_locations            the adding objects locations adding to the object_pool_metadata object,    
+         *                               if the object already existed in the metadata object, then it will not be changed
+         * @obj_subgroup_type            the object_pool's subgroup type information
+         * @obj_subgroup_index           the object_pool's subgroup index information
+         *
+         * @return a future to the version and timestamp of the put operation.
+         * TODO: check if the user application is responsible for reclaim the future by reading it sometime.
+         */
+        derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> insert_object_pool_locations(
+                                        std::string& object_pool_id,
+                                        std::unordered_map<std::string,uint32_t>  obj_locations,
                                         uint32_t meta_subgroup_index=0, uint32_t meta_shard_index=0);
 
         /**
@@ -634,6 +651,74 @@ namespace cascade {
         void dump() const;
     };
    
+   /**
+     * configuration keys
+     */
+    #define DFG_ID                  "dfg_id"
+    #define DFG_NAME                "dfg_name"
+    #define DFG_NUM_NODES           "num_nodes"
+    #define DFG_LAYOUT              "layout"
+
+    /**
+     * A class describing a DFG.
+     */
+    class DFGDescriptor {
+    public:
+        int dfg_id;
+        std::string dfg_name;
+        /** number of nodes defined in the DFG **/
+        uint32_t num_nodes;
+        /** A struct that defines a DFG node **/
+        struct DFGNode {
+            std::string object_pool_id;
+            std::string subgroup_type;
+            uint32_t subgroup_index;
+            int sharding_policy;
+            std::vector<std::string> dlls;
+            std::string uuid;
+            std::vector<std::string> external_inputs;
+            std::vector<std::string> output_objpools;
+
+            inline std::string to_string() {
+                std::ostringstream out;
+                out << "DFGNode{object_pool_id: " << object_pool_id 
+                << "assigned subgroup type: "<< subgroup_type << ", index:" << subgroup_index
+                << ", dlls:[";
+                for (std::string& dll: dlls) {
+                    out << dll << ",";
+                }
+                out << "], external_inputs:[";
+                for (std::string& external_input: external_inputs) {
+                    out << external_input << ",";
+                }
+                out << "], output_objpools:[";
+                for (std::string& output_objpool: output_objpools) {
+                    out << output_objpool << ",";
+                }
+                out << "]";
+                return out.str();
+            }
+        };
+        std::vector<DFGNode> nodes;
+        /** default constructor **/
+        DFGDescriptor();
+        /** constructor **/
+        DFGDescriptor(const json& dfg_conf);
+        
+        // copy constructor
+        DFGDescriptor& operator=(const DFGDescriptor& other);
+        
+        std::vector<std::string> get_output_objectpools(std::string);
+
+        std::vector<std::string> get_external_inputs(std::string);
+
+        /** dump **/
+        void dump() const;
+
+        /** destructor **/
+        virtual ~DFGDescriptor();
+        
+    };
 
     /**
      * The cascade context
@@ -657,6 +742,7 @@ namespace cascade {
         mutable std::condition_variable action_buffer_data_cv;
         inline void action_buffer_enqueue(Action&&);
         inline Action action_buffer_dequeue();
+        
 
         /** thread pool control */
         std::atomic<bool>       is_running;
@@ -668,12 +754,21 @@ namespace cascade {
         mutable std::mutex prefix_registry_ptr_mutex;
         /** a shared lock for writer-reader */
         mutable std::shared_mutex prefix_registry_ptr_rw_mutex;
+
+        // DFG TODO: maybe combine this with prefix_registry_ptr
+        std::unordered_map<std::string, DFGDescriptor> dfgs_cache;
+        /** the write lock for dfgs cache  */
+        mutable std::mutex dfgs_cache_mutex;
+        
+
         /** the data path logic loader */
         std::unique_ptr<DataPathLogicManager<CascadeTypes...>> data_path_logic_manager;
         /** the off-critical data path worker thread pool */
         std::vector<std::thread>        off_critical_data_path_thread_pool;
         /** the service client: off critical data path logic use it to send data to a next tier. */
         std::unique_ptr<ServiceClient<CascadeTypes...>> service_client;
+
+        
         /**
          * destroy the context, to be called in destructor 
          */
@@ -711,6 +806,13 @@ namespace cascade {
          * @return a reference to service client.
          */
         ServiceClient<CascadeTypes...>& get_service_client_ref() const;
+
+        
+        /**
+         * Get the cached dfg descriptors
+         */
+        std::unordered_map<std::string, DFGDescriptor> get_cached_dfgs() const;
+
         /**
          * We give up the following on-demand loading mechanism:
          * ==============================================================================================================
@@ -784,6 +886,18 @@ namespace cascade {
          */
         virtual std::unordered_map<std::string,std::shared_ptr<OffCriticalDataPathObserver>> 
             get_prefix_handlers(const std::string& prefix); 
+
+        /**
+         * create object pool for the task in dfg, Store dfg to the cached dfg map
+         */
+        virtual void store_dfg(DFGDescriptor& dfg);
+
+        /**
+         * register the dfg to prefix
+         */
+        virtual void register_dfg(DFGDescriptor& dfg, const std::shared_ptr<OffCriticalDataPathObserver>& ocdpo_ptr = nullptr) ;
+
+
         /**
          * post an action to the Context for processing.
          *

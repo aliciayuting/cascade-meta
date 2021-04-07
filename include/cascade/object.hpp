@@ -73,6 +73,15 @@ public:
         const char* const v);
 };
 
+/*
+ * The image frame data in predefined 224x224 pixel format.
+ */
+class ImageFrame: public Blob {
+public:
+    std::string key;
+    ImageFrame(const std::string& k, const Blob& other): Blob(other), key(k) {}
+};
+
 #define INVALID_UINT64_OBJECT_KEY (0xffffffffffffffffLLU)
 
 class ObjectWithUInt64Key : public mutils::ByteRepresentable,
@@ -259,10 +268,10 @@ class ObjectPoolMetadata :  public mutils::ByteRepresentable,
                             public IKeepTimestamp,
                             public IVerifyPreviousVersion {
 public:
-    mutable std::string                                 object_pool_id;          // the identifier of the object pool
-    mutable std::string                                 subgroup_type;           // the subgroup type of the object pool
-    mutable uint32_t                                    subgroup_index;          // the subgroup index of the object pool
-    mutable int                                         sharding_policy;         // index of shard member selection policy, default 0 
+    std::string                                         object_pool_id;          // the identifier of the object pool
+    std::string                                         subgroup_type;           // the subgroup type of the object pool
+    uint32_t                                            subgroup_index;          // the subgroup index of the object pool
+    int                                                 sharding_policy;         // index of shard member selection policy, default 0 
     mutable std::unordered_map<std::string,
                             uint32_t>                   objects_locations;       // the list of shards where it contains the objects
     mutable bool                                        deleted;                 // deadline of the cleaning of objects inside the object_pool

@@ -1,0 +1,21 @@
+{
+    "dfg_id": 0,
+    "dfg_name": "cow_dfg1",
+    "num_nodes": 2,
+    "layout": [
+      {
+        "object_pool_id": "/Ithaca/farm1",
+        "subgroup_type":"VCSS",
+        "logics": ["libconsole_printer_dpl"] ,
+        "external_inputs": [],
+        "output_objpools": ["/libconsole_printer_stage2_dpl"]
+      },
+      {
+        "object_pool_id": "/flower",
+        "subgroup_type":"VCSS",
+        "logics": ["libconsole_printer_stage2_dpl"],
+        "external_inputs": ["/libconsole_printer_dpl/resize_dimension"],
+        "output_objpools": ["/pipeline_result"]
+      }
+  ]
+}

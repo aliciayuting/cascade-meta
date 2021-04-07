@@ -122,5 +122,83 @@ ResourceDescriptor::~ResourceDescriptor() {
     // destructor
 }
 
+DFGDescriptor::DFGDescriptor() : dfg_id(-1) {
+    
+}
+
+DFGDescriptor::DFGDescriptor(const json& dfg_conf) {
+    // if (!dfg_conf.is_object() || !dfg_conf[DFG_LAYOUT].is_array()) {
+    //     dbg_default_error("parse_json_subgroup_policy cannot parse {}.", dfg_conf.get<std::string>());
+    //     throw derecho::derecho_exception("parse_json_subgroup_policy cannot parse" + dfg_conf.get<std::string>());
+    // }
+    dfg_id = dfg_conf[DFG_ID];
+    dfg_name = dfg_conf[DFG_NAME];
+    num_nodes = dfg_conf[DFG_NUM_NODES];
+    nodes = std::vector<DFGDescriptor::DFGNode>();
+    for (auto node_it:dfg_conf[DFG_LAYOUT]) {
+        DFGDescriptor::DFGNode node;
+        node.object_pool_id = node_it["object_pool_id"];
+        node.subgroup_type = node_it["subgroup_type"];
+        node.subgroup_index = node_it["subgroup_index"];
+        node.sharding_policy = node_it["sharding_policy"];
+        node.dlls = node_it["logics"].get<std::vector<std::string>>();
+        node.uuid = node_it["UUID"];
+        node.external_inputs = node_it["external_inputs"].get<std::vector<std::string>>();
+        node.output_objpools = node_it["output_objpools"].get<std::vector<std::string>>();
+        nodes.push_back(node);
+    }
+}
+
+DFGDescriptor& DFGDescriptor::operator=(const DFGDescriptor& other){
+    dfg_id = other.dfg_id;
+    dfg_name = other.dfg_name;
+    num_nodes = other.num_nodes;
+    std::vector<DFGDescriptor::DFGNode> c_nodes = other.nodes;
+    nodes = c_nodes;
+    return *this;
+}
+
+
+std::vector<std::string> DFGDescriptor::get_output_objectpools(std::string current_node_name){
+    std::vector<std::string> output_objectpools;
+    for (DFGDescriptor::DFGNode& node: nodes) {
+        std::cout << "\033[1;31m"<<"\n loop to node " << node.object_pool_id << ", current node name is : "<< current_node_name << "\033[0m" << std::endl;
+
+        if(node.object_pool_id == current_node_name){
+            output_objectpools = node.output_objpools;
+            std::cout << "\033[1;31m"<<"\n ~!! [ATTENTION]object pools size: " << std::to_string(node.output_objpools.size() ) << "\033[0m" << std::endl;
+
+            return output_objectpools;
+        }
+    }
+    return output_objectpools;
+}
+
+std::vector<std::string> DFGDescriptor::get_external_inputs(std::string current_node_name){
+    std::vector<std::string> output_objectpools;
+    for (auto& c_node: nodes) {
+        DFGDescriptor::DFGNode node = static_cast<DFGDescriptor::DFGNode> (c_node);
+        if(node.object_pool_id == current_node_name){
+            return node.external_inputs;
+        }
+    }
+    return output_objectpools;
+}
+
+void DFGDescriptor::dump() const {
+    dbg_default_info("DataFlowGraph Descriptor:");
+    dbg_default_info("dfg_id: " + std::to_string(dfg_id) + ",dfg_name: " + dfg_name + ", number of nodes: " + std::to_string(num_nodes));
+    for (auto node: nodes) {
+        std::ostringstream os_dfg_node;
+        os_dfg_node << node.object_pool_id;
+        dbg_default_info("dfg_node with dfg id={}", node.object_pool_id);
+        // dbg_default_info("number of ouput_objpools = {}", std::to_string(node.output_objpools.size() ) );
+    }
+}
+
+DFGDescriptor::~DFGDescriptor() {
+
+}
+
 }
 }

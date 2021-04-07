@@ -1,0 +1,18 @@
+{
+    "dfg_id": 0,
+    "num_nodes": 2,
+    "layout": [
+      {
+        "object_pool_id": "/Ithaca/farm1",
+        "logics": ["libconsole_printer_dpl"] ,
+        "external_inputs": [],
+        "output_objpools": ["/console_printer_stage2_dpl"]
+      },
+      {
+        "object_pool_id": "/flower",
+        "logics": ["console_printer_stage2_dpl"],
+        "external_inputs": ["/image_pipeline/resize_dimension"],
+        "output_objpools": ["/pipeline_result"]
+      }
+  ]
+}
