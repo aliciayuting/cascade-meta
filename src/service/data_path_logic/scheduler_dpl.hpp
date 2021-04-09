@@ -34,12 +34,13 @@ int nthOccurrence(const std::string& str, const std::string& findMe, int nth)
 
 
 template <typename... CascadeTypes>
-std::tuple<uint32_t, uint32_t> select_shard(CascadeContext<CascadeTypes...>& ctxt, std::string object_pool_id, std::string key){
+std::tuple<std::string, uint32_t, uint32_t> select_shard(CascadeContext<CascadeTypes...>& ctxt, std::string object_pool_id, std::string key){
     uint32_t p_subgroup_index = 0, p_shard_index = 0;
     std::string p_subgroup_type;
-    std::pair<uint32_t, uint32_t> picked_loc;
+    std::tuple<std::string, uint32_t, uint32_t> picked_loc;
     ObjectPoolMetadata obj_pool_meta = ctxt.get_service_client_ref().find_object_pool(object_pool_id);
     if(obj_pool_meta.is_valid()){
+        p_subgroup_type = obj_pool_meta.subgroup_type;
         p_subgroup_index = obj_pool_meta.subgroup_index;
         p_subgroup_type = obj_pool_meta.subgroup_type;
         dbg_default_info("[Scheduled] based on object pool");
@@ -49,7 +50,7 @@ std::tuple<uint32_t, uint32_t> select_shard(CascadeContext<CascadeTypes...>& ctx
         }else if (p_subgroup_type=="PCSS"){
             total_num_shards = ctxt.get_service_client_ref().template get_number_of_shards<PersistentCascadeStoreWithStringKey>(p_subgroup_index); 
         }else{
-            return std::make_tuple(p_subgroup_index,p_shard_index);
+            return std::make_tuple(p_subgroup_type, p_subgroup_index, p_shard_index);
         }
         unsigned int h_key = hash_string_key(key);
         switch(obj_pool_meta.sharding_policy) {
@@ -71,7 +72,7 @@ std::tuple<uint32_t, uint32_t> select_shard(CascadeContext<CascadeTypes...>& ctx
             break;
         }
     }
-    return std::make_tuple(p_subgroup_index,p_shard_index);;
+    return std::make_tuple(p_subgroup_type, p_subgroup_index,p_shard_index);;
 }
 
 

@@ -162,12 +162,8 @@ DFGDescriptor& DFGDescriptor::operator=(const DFGDescriptor& other){
 std::vector<std::string> DFGDescriptor::get_output_objectpools(std::string current_node_name){
     std::vector<std::string> output_objectpools;
     for (DFGDescriptor::DFGNode& node: nodes) {
-        std::cout << "\033[1;31m"<<"\n loop to node " << node.object_pool_id << ", current node name is : "<< current_node_name << "\033[0m" << std::endl;
-
         if(node.object_pool_id == current_node_name){
             output_objectpools = node.output_objpools;
-            std::cout << "\033[1;31m"<<"\n ~!! [ATTENTION]object pools size: " << std::to_string(node.output_objpools.size() ) << "\033[0m" << std::endl;
-
             return output_objectpools;
         }
     }

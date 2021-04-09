@@ -66,6 +66,8 @@ def process_frame():
         # put to subgroup VCSS
         cascade_frame = image_frame.tobytes()
         ret = capi.put('VCSS', '/cow_dfg1/Ithaca/farm1/'+str(idx), cascade_frame, 0, 0, True)
+        # ret = capi.put('VCSS', '/cow_dfg1/flower/'+str(idx), cascade_frame, 0, 0, True)
+
         print(ret.get_result())
         time.sleep(1)
 

@@ -22,9 +22,10 @@ namespace cascade{
 #define DFG_CONFIG  "dfg.json"
 #define EVALUATION 1 
 
-DFGDescriptor dfg_descriptor; 
+// DFGDescriptor dfg_descriptor; 
+// DFGDescriptor dfg_descriptor_n; 
 template <typename... CascadeTypes>
-std::tuple<uint32_t, uint32_t> select_shard(CascadeContext<CascadeTypes...>& ctxt, std::string object_pool_id, std::string key);
+std::tuple<std::string, uint32_t, uint32_t> select_shard(CascadeContext<CascadeTypes...>& ctxt, std::string object_pool_id, std::string key);
 // Helper function for changing prefix
 int nthOccurrence(const std::string& str, const std::string& findMe, int nth);
 
@@ -40,8 +41,9 @@ std::string get_description() {
     return MY_DESC;
 }
 
-
+// DFG
 void initialize(ICascadeContext* ctxt) {
+    DFGDescriptor dfg_descriptor; 
     std::ifstream input_conf(DFG_CONFIG);
     json dfg_conf = json::parse(input_conf); 
     dfg_descriptor = DFGDescriptor(dfg_conf);
@@ -50,7 +52,6 @@ void initialize(ICascadeContext* ctxt) {
                                                     PersistentCascadeStoreWithStringKey>*>(ctxt);
     typed_ctxt->store_dfg(dfg_descriptor);
     dbg_default_trace("\n\n [CascadeContext] initilization");
-
     dfg_descriptor.dump();
 }
 
@@ -299,11 +300,9 @@ public:
                 derecho::getConfString(DPL_CONF_PET_SYNSET),
                 derecho::getConfString(DPL_CONF_PET_SYMBOL),
                 derecho::getConfString(DPL_CONF_PET_PARAMS));
-        
         VolatileCascadeStoreWithStringKey::ObjectType *vcss_value = const_cast<VolatileCascadeStoreWithStringKey::ObjectType*>(
                                                                     reinterpret_cast<const VolatileCascadeStoreWithStringKey::ObjectType *>(value_ptr));
         std::unique_ptr<ImageFrame> frame = std::make_unique<ImageFrame>(vcss_value->get_key_ref(),vcss_value->blob);
-        
         std::string name;
         double soft_max;
         int dfg_pos = nthOccurrence(frame->key, "/", 1);
@@ -322,67 +321,78 @@ public:
 #ifdef EVALUATION
         uint64_t after_inference_ns = get_time();
 #endif
-        std::cout << "\033[1;31m"<<"\n\n FINISHED INFERENCE for: "<< key_string << "\033[0m" << std::endl;
-
-        // First ceck if there is corresponding dfg  defined previously
+        /** Step 2. store the infered result. (this step could be avoid if not need to be store to subgroup) */
+        std::string reput_key = frame->key+"/infer";
+        VolatileCascadeStoreWithStringKey::ObjectType obj(reput_key,name.c_str(),name.size());
+        std::lock_guard<std::mutex> lock(p2p_send_mutex);
+#ifdef EVALUATION
+        CloseLoopReport clr;
+        FrameData* fd = reinterpret_cast<FrameData*>(frame->bytes);
+        clr.photo_id = fd->photo_id;
+        clr.inference_us = (after_inference_ns-before_inference_ns)/1000;
+#endif
+        auto result = typed_ctxt->get_service_client_ref().template put<VolatileCascadeStoreWithStringKey>(obj,0,0,false);
+        for (auto& reply_future:result.get()) {
+            auto reply = reply_future.second.get();
+            dbg_default_debug("node({}) replied with version:({:x},{}us)",reply_future.first,std::get<0>(reply),std::get<1>(reply));
+        }
+#ifdef EVALUATION
+        uint64_t after_put_ns = get_time();
+        clr.put_us = (after_put_ns-after_inference_ns)/1000;
+        int serverlen = sizeof(serveraddr);
+        size_t ns = sendto(sock_fd,(void*)&clr,sizeof(clr),0,(const sockaddr*)&serveraddr,serverlen);
+        if (ns < 0) {
+            std::cerr << "Failed to report error" << std::endl;
+        }
+#endif
+        // DFG
+        /** Step 3. Check if there is corresponding dfg, if exists then use dfg to process the subsequent tasks */
         std::unordered_map<std::string,DFGDescriptor>::const_iterator got = typed_ctxt->get_cached_dfgs().find (dfg_name);
         if (got == typed_ctxt->get_cached_dfgs().end() ){
-            // Case1. there is no corresponding dfg, then task end here.
-            std::string reput_key = frame->key+"/infer";
-            VolatileCascadeStoreWithStringKey::ObjectType obj(reput_key,name.c_str(),name.size());
-            std::lock_guard<std::mutex> lock(p2p_send_mutex);
-#ifdef EVALUATION
-            CloseLoopReport clr;
-            FrameData* fd = reinterpret_cast<FrameData*>(frame->bytes);
-            clr.photo_id = fd->photo_id;
-            clr.inference_us = (after_inference_ns-before_inference_ns)/1000;
-#endif
-            auto result = typed_ctxt->get_service_client_ref().template put<VolatileCascadeStoreWithStringKey>(obj,0,0,false);
-            for (auto& reply_future:result.get()) {
-                auto reply = reply_future.second.get();
-                dbg_default_debug("node({}) replied with version:({:x},{}us)",reply_future.first,std::get<0>(reply),std::get<1>(reply));
-            }
-
-#ifdef EVALUATION
-            uint64_t after_put_ns = get_time();
-            clr.put_us = (after_put_ns-after_inference_ns)/1000;
-            int serverlen = sizeof(serveraddr);
-            size_t ns = sendto(sock_fd,(void*)&clr,sizeof(clr),0,(const sockaddr*)&serveraddr,serverlen);
-            if (ns < 0) {
-                std::cerr << "Failed to report error" << std::endl;
-            }
-#endif
-        }else{
-            // Case2. If there is corresponding dfg, then use it and RUN SCHEDULER
-            std::cout << "\033[1;31m"<<"\n\n Found the dfg: " << dfg_name << ", current node name is : "<< current_node_name << "\033[0m" << std::endl;
-
-            for(auto& dfg_it : typed_ctxt->get_cached_dfgs()){
+            return;
+        }
+        /** TODO: Because using unordered_map.find() doesn't include the object content stored in the map, so using a less efficient for-loop for now. 
+         *  need to change this */
+        for(auto& dfg_it : typed_ctxt->get_cached_dfgs()){
+            std::string it_dfg_name = static_cast<std::string> (dfg_it.first);
+            if (dfg_name == it_dfg_name){
                 DFGDescriptor dfg = static_cast<DFGDescriptor>(dfg_it.second);
                 std::string obj_key = frame->key.substr( node_pos );
                 std::vector<std::string> output_objectpools = dfg.get_output_objectpools(current_node_name);
                 for (const auto& e : output_objectpools) {
-                    std::string object_pool_id = static_cast<std::string> (e);
-                    std::string reput_key = object_pool_id + obj_key;
-                    // PersistentCascadeStoreWithStringKey::ObjectType obj(reput_key,name.c_str(),name.size());
-                    VolatileCascadeStoreWithStringKey::ObjectType obj(reput_key,name.c_str(),name.size());
-                    std::lock_guard<std::mutex> lock(p2p_send_mutex);
+                    std::string object_pool_id = dfg_name + static_cast<std::string> (e);
+                    std::string reput_key = dfg_name + object_pool_id + obj_key;
+                    
+                    std::tuple<std::string, uint32_t, uint32_t> scheduled_loc = select_shard<VolatileCascadeMetadataWithStringKey,VolatileCascadeStoreWithStringKey,
+                                                                    PersistentCascadeStoreWithStringKey>(*typed_ctxt,object_pool_id,reput_key);
+                    std::string subgroup_type = std::get<0>(scheduled_loc);
+                    uint32_t subgroup_index = std::get<1>(scheduled_loc);
+                    uint32_t shard_index = std::get<2>(scheduled_loc);                    
+                    /** TODO: having this lock introduce a deadlock */
+                    // std::lock_guard<std::mutex> lock(p2p_send_mutex);
 #ifdef EVALUATION
                     CloseLoopReport clr;
                     FrameData* fd = reinterpret_cast<FrameData*>(frame->bytes);
                     clr.photo_id = fd->photo_id;
                     clr.inference_us = (after_inference_ns-before_inference_ns)/1000;
 #endif
-                    std::tuple<uint32_t, uint32_t> scheduled_loc = select_shard<VolatileCascadeMetadataWithStringKey,VolatileCascadeStoreWithStringKey,
-                                                                    PersistentCascadeStoreWithStringKey>(*typed_ctxt,object_pool_id,reput_key);
-                    uint32_t subgroup_index = std::get<0>(scheduled_loc);
-                    uint32_t shard_index = std::get<1>(scheduled_loc);
-                    
-                    auto result = typed_ctxt->get_service_client_ref().template put<VolatileCascadeStoreWithStringKey>(obj,subgroup_index,shard_index,false);
-                    for (auto& reply_future:result.get()) {
-                        auto reply = reply_future.second.get();
-                        dbg_default_debug("node({}) replied with version:({:x},{}us)",reply_future.first,std::get<0>(reply),std::get<1>(reply));
-                    }
-                
+                    /** TODO: change to use trigger put*/
+                    if (subgroup_type=="PCSS"){
+                        /** TODO: vcss_value copy, is there a way avoid this? */
+                        PersistentCascadeStoreWithStringKey::ObjectType obj(reput_key,vcss_value->blob);
+                        auto result = typed_ctxt->get_service_client_ref().template put<PersistentCascadeStoreWithStringKey>(obj,subgroup_index,shard_index,false);
+                        for (auto& reply_future:result.get()) {
+                            auto reply = reply_future.second.get();
+                            dbg_default_debug("node({}) replied with version:({:x},{}us)",reply_future.first,std::get<0>(reply),std::get<1>(reply));
+                        }
+                    }else{
+                        VolatileCascadeStoreWithStringKey::ObjectType obj(reput_key,vcss_value->blob);
+                        auto result = typed_ctxt->get_service_client_ref().template put<VolatileCascadeStoreWithStringKey>(obj,subgroup_index,shard_index,false);
+                        for (auto& reply_future:result.get()) {
+                            auto reply = reply_future.second.get();
+                            dbg_default_debug("node({}) replied with version:({:x},{}us)",reply_future.first,std::get<0>(reply),std::get<1>(reply));
+                        }
+                    }            
 #ifdef EVALUATION
                     uint64_t after_put_ns = get_time();
                     clr.put_us = (after_put_ns-after_inference_ns)/1000;
@@ -393,9 +403,9 @@ public:
                     }
 #endif
                 }
+            return;
             }
         }
-
     }
 
     virtual ~ClassifierTrigger() {
@@ -405,7 +415,8 @@ public:
     }
 };
 
-// TODO: question: register_triggers could be done at CascadeContext initialization based on dfg???
+// DFG
+/** TODO: question: register_triggers could be done at CascadeContext initialization based on dfg??? */
 void register_triggers(ICascadeContext* ctxt) {
     // Please make sure the CascadeContext type matches the CascadeService type, which is defined in server.cpp if you
     // use the default cascade service binary.

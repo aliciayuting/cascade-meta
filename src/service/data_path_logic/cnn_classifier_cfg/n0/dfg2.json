@@ -1,0 +1,27 @@
+{
+    "dfg_id": 2,
+    "dfg_name": "/cow_dfg2",
+    "num_nodes": 2,
+    "layout": [
+      {
+        "object_pool_id": "/Ithaca/farm1",
+        "subgroup_type": "VCSS",
+        "subgroup_index": 0,
+        "sharding_policy": 0,
+        "logics": ["libimage_pipeline_dpl"] ,
+        "UUID": "48e60f7c",
+        "external_inputs": [],
+        "output_objpools": ["/flower"]
+      },
+      {
+        "object_pool_id": "/flower",
+        "subgroup_type": "VCSS",
+        "subgroup_index": 0,
+        "sharding_policy": 0,
+        "logics": ["libimage_pipeline_dpl"],
+        "UUID": "48e60f8b",
+        "external_inputs": ["/flower-model/flower-recognition-0040.params","/flower-model/flower-recognition-symbol.json","/flower-model/synset.txt"],
+        "output_objpools": []
+      }
+  ]
+}

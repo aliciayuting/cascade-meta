@@ -318,7 +318,7 @@ std::tuple<uint32_t, uint32_t> ServiceClient<CascadeTypes...>::pick_shard(const 
         std::string prefix; // use prefix as object pool id
         if (pos != std::string::npos) {
             prefix = key.substr(0,pos);
-            // print_r("\n pick shard for key:" + key + ", prefix: " + prefix);
+            print_r("\n pick shard for key:" + key + ", prefix: " + prefix);
             ObjectPoolMetadata obj_pool_meta = this->find_object_pool(prefix);
             if(obj_pool_meta.is_valid()){
                 dbg_default_trace("[OPMD] pick shard: Found object pool info of prefix: " + prefix);
@@ -496,7 +496,7 @@ ObjectPoolMetadata ServiceClient<CascadeTypes...>::find_object_pool( std::string
         ObjectPoolMetadata obj_pool_meta = object_pool_info_cache.at(object_pool_id);
         return obj_pool_meta;
     } else {
-        dbg_default_trace("[OPMS] Fetchin the result from metadata object pool");
+        dbg_default_trace("[OPMS] Fetching the result from metadata object pool");
         derecho::rpc::QueryResults<const ObjectPoolMetadata> result = this->get<VolatileCascadeMetadataWithStringKey>(object_pool_id, persistent::INVALID_VERSION, 0, 0,false);
         for (auto& reply_future:result.get()) {
             auto temp = reply_future.second.get();
@@ -529,7 +529,7 @@ derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> ServiceCl
         std::lock_guard(this->group_ptr_mutex);
         if (static_cast<uint32_t>(group_ptr->template get_my_shard<SubgroupType>(subgroup_index)) == shard_index) {
             // do ordered put as a member (Replicated).
-            print_r("[ordered put]");
+            // print_r("[ordered put]");
             auto& subgroup_handle = group_ptr->template get_subgroup<SubgroupType>(subgroup_index);
             return subgroup_handle.template ordered_send<RPC_NAME(ordered_put)>(value);
         } else {
@@ -541,7 +541,7 @@ derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> ServiceCl
             return subgroup_handle.template p2p_send<RPC_NAME(put)>(node_id,value);
         }
     } else {
-        print_r("[put] group_pt==nullptr");
+        // print_r("[put] group_pt==nullptr");
         std::lock_guard(this->external_group_ptr_mutex);
         // call as an external client (ExternalClientCaller).
         auto& caller = external_group_ptr->template get_subgroup_caller<SubgroupType>(subgroup_index);
@@ -960,8 +960,10 @@ void CascadeContext<CascadeTypes...>::store_dfg(DFGDescriptor& dfg) {
     dbg_default_info("create and cache for dfg descriptor = {}", dfg.dfg_name);
     for (auto node: dfg.nodes){
         dbg_default_info("dfg node name={}", node.object_pool_id);
-        ObjectPoolMetadata obj_pool_metadata(node.object_pool_id, node.subgroup_type, node.subgroup_index, node.sharding_policy );
-        this->get_service_client_ref().create_object_pool(node.object_pool_id, obj_pool_metadata,0,0);
+        std::string obj_pool_name = dfg.dfg_name + node.object_pool_id;
+        ObjectPoolMetadata obj_pool_metadata(obj_pool_name, node.subgroup_type, node.subgroup_index, node.sharding_policy );
+        
+        this->get_service_client_ref().create_object_pool(obj_pool_name, obj_pool_metadata,0,0);
     }
     std::unique_lock wlck(prefix_registry_ptr_mutex);
     dfgs_cache[dfg.dfg_name] = dfg;

@@ -158,7 +158,7 @@ static void print_red(std::string msg) {
     @return QueryResultsStore that handles the tuple of version and ts_us.
 */
 template <typename SubgroupType>
-auto put(ServiceClientAPI& capi, std::string& key, std::string& value, uint32_t subgroup_index, uint32_t shard_index) {
+auto put(ServiceClientAPI& capi, std::string& key, std::string& value, uint32_t subgroup_index, uint32_t shard_index, bool use_meta) {
     typename SubgroupType::ObjectType obj;
     if constexpr (std::is_same<typename SubgroupType::KeyType,uint64_t>::value) {
         obj.key = static_cast<uint64_t>(std::stol(key));
@@ -169,7 +169,7 @@ auto put(ServiceClientAPI& capi, std::string& key, std::string& value, uint32_t 
         return;
     }
     obj.blob = Blob(value.c_str(),value.length());
-    derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> result = capi.template put<SubgroupType>(obj, subgroup_index, shard_index,true);
+    derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> result = capi.template put<SubgroupType>(obj, subgroup_index, shard_index,use_meta);
     QueryResultsStore<std::tuple<persistent::version_t,uint64_t>, std::vector<long>>* s = new QueryResultsStore<std::tuple<persistent::version_t,uint64_t>, std::vector<long>>(result, bundle_f); 
     return py::cast(s);
 }
@@ -337,7 +337,7 @@ PYBIND11_MODULE(cascade_py,m)
          .def("put", [](ServiceClientAPI& capi, std::string service_type, std::string& key, py::bytes value, uint32_t subgroup_index, uint32_t shard_index,bool use_meta){
 
             std::string val = std::string(value);
-            on_subgroup_type(service_type, return put, capi, key, val, subgroup_index, shard_index);
+            on_subgroup_type(service_type, return put, capi, key, val, subgroup_index, shard_index,use_meta);
 
             return py::cast(NULL);
 
