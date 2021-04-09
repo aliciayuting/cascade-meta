@@ -23,12 +23,6 @@ using derecho::CrossProductPolicy;
 using derecho::ShardAllocationPolicy;
 
 
-static void print_r(std::string msg) {
-    std::cout << "\033[1;31m"
-              << msg
-              << "\033[0m" << std::endl;
-}
-
 /**
  * parse_json_subgroup_policy()
  *
@@ -318,7 +312,6 @@ std::tuple<uint32_t, uint32_t> ServiceClient<CascadeTypes...>::pick_shard(const 
         std::string prefix; // use prefix as object pool id
         if (pos != std::string::npos) {
             prefix = key.substr(0,pos);
-            print_r("\n pick shard for key:" + key + ", prefix: " + prefix);
             ObjectPoolMetadata obj_pool_meta = this->find_object_pool(prefix);
             if(obj_pool_meta.is_valid()){
                 dbg_default_trace("[OPMD] pick shard: Found object pool info of prefix: " + prefix);
@@ -529,11 +522,9 @@ derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> ServiceCl
         std::lock_guard(this->group_ptr_mutex);
         if (static_cast<uint32_t>(group_ptr->template get_my_shard<SubgroupType>(subgroup_index)) == shard_index) {
             // do ordered put as a member (Replicated).
-            // print_r("[ordered put]");
             auto& subgroup_handle = group_ptr->template get_subgroup<SubgroupType>(subgroup_index);
             return subgroup_handle.template ordered_send<RPC_NAME(ordered_put)>(value);
         } else {
-            print_r("[p2p put]");
             // do normal put as a non member (ExternalCaller).
             auto& subgroup_handle = group_ptr->template get_nonmember_subgroup<SubgroupType>(subgroup_index);
             // object put location META
@@ -541,7 +532,6 @@ derecho::rpc::QueryResults<std::tuple<persistent::version_t,uint64_t>> ServiceCl
             return subgroup_handle.template p2p_send<RPC_NAME(put)>(node_id,value);
         }
     } else {
-        // print_r("[put] group_pt==nullptr");
         std::lock_guard(this->external_group_ptr_mutex);
         // call as an external client (ExternalClientCaller).
         auto& caller = external_group_ptr->template get_subgroup_caller<SubgroupType>(subgroup_index);
@@ -967,7 +957,6 @@ void CascadeContext<CascadeTypes...>::store_dfg(DFGDescriptor& dfg) {
     }
     std::unique_lock wlck(prefix_registry_ptr_mutex);
     dfgs_cache[dfg.dfg_name] = dfg;
-    wlck.unlock();
 }
 
 // DFG: register dfg's node to prefix

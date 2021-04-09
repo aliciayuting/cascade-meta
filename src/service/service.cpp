@@ -122,15 +122,12 @@ ResourceDescriptor::~ResourceDescriptor() {
     // destructor
 }
 
+// DFG
 DFGDescriptor::DFGDescriptor() : dfg_id(-1) {
     
 }
 
 DFGDescriptor::DFGDescriptor(const json& dfg_conf) {
-    // if (!dfg_conf.is_object() || !dfg_conf[DFG_LAYOUT].is_array()) {
-    //     dbg_default_error("parse_json_subgroup_policy cannot parse {}.", dfg_conf.get<std::string>());
-    //     throw derecho::derecho_exception("parse_json_subgroup_policy cannot parse" + dfg_conf.get<std::string>());
-    // }
     dfg_id = dfg_conf[DFG_ID];
     dfg_name = dfg_conf[DFG_NAME];
     num_nodes = dfg_conf[DFG_NUM_NODES];
@@ -188,7 +185,6 @@ void DFGDescriptor::dump() const {
         std::ostringstream os_dfg_node;
         os_dfg_node << node.object_pool_id;
         dbg_default_info("dfg_node with dfg id={}", node.object_pool_id);
-        // dbg_default_info("number of ouput_objpools = {}", std::to_string(node.output_objpools.size() ) );
     }
 }
 
