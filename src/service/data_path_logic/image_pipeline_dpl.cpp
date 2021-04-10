@@ -324,6 +324,7 @@ public:
         /** Step 2. store the infered result. (this step could be avoid if not need to be store to subgroup) */
         std::string reput_key = frame->key+"/infer";
         VolatileCascadeStoreWithStringKey::ObjectType obj(reput_key,name.c_str(),name.size());
+        {// lock scope
         std::lock_guard<std::mutex> lock(p2p_send_mutex);
 #ifdef EVALUATION
         CloseLoopReport clr;
@@ -336,6 +337,7 @@ public:
             auto reply = reply_future.second.get();
             dbg_default_debug("node({}) replied with version:({:x},{}us)",reply_future.first,std::get<0>(reply),std::get<1>(reply));
         }
+        
 #ifdef EVALUATION
         uint64_t after_put_ns = get_time();
         clr.put_us = (after_put_ns-after_inference_ns)/1000;
@@ -345,6 +347,8 @@ public:
             std::cerr << "Failed to report error" << std::endl;
         }
 #endif
+        }// end lock scope
+
         // DFG
         /** Step 3. Check if there is corresponding dfg, if exists then use dfg to process the subsequent tasks */
         std::unordered_map<std::string,DFGDescriptor>::const_iterator got = typed_ctxt->get_cached_dfgs().find (dfg_name);
@@ -367,9 +371,10 @@ public:
                                                                     PersistentCascadeStoreWithStringKey>(*typed_ctxt,object_pool_id,reput_key);
                     std::string subgroup_type = std::get<0>(scheduled_loc);
                     uint32_t subgroup_index = std::get<1>(scheduled_loc);
-                    uint32_t shard_index = std::get<2>(scheduled_loc);                    
+                    uint32_t shard_index = std::get<2>(scheduled_loc);        
                     /** TODO: having this lock introduce a deadlock */
-                    // std::lock_guard<std::mutex> lock(p2p_send_mutex);
+                    std::lock_guard<std::mutex> lock(p2p_send_mutex);
+            
 #ifdef EVALUATION
                     CloseLoopReport clr;
                     FrameData* fd = reinterpret_cast<FrameData*>(frame->bytes);
@@ -386,8 +391,10 @@ public:
                             dbg_default_debug("node({}) replied with version:({:x},{}us)",reply_future.first,std::get<0>(reply),std::get<1>(reply));
                         }
                     }else{
+                        
                         VolatileCascadeStoreWithStringKey::ObjectType obj(reput_key,vcss_value->blob);
                         auto result = typed_ctxt->get_service_client_ref().template put<VolatileCascadeStoreWithStringKey>(obj,subgroup_index,shard_index,false);
+                        
                         for (auto& reply_future:result.get()) {
                             auto reply = reply_future.second.get();
                             dbg_default_debug("node({}) replied with version:({:x},{}us)",reply_future.first,std::get<0>(reply),std::get<1>(reply));
